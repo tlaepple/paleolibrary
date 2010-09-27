@@ -1,0 +1,40 @@
+10
+
+dir
+12
+svn+ssh://root@csysl21.awi.de/root/work/tlaepple/svnice/paleolibrary/trunk
+svn+ssh://root@csysl21.awi.de/root/work/tlaepple/svnice
+
+
+
+2010-08-25T20:09:49.659927Z
+12
+root
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+34751cee-e9ce-4970-902e-39cee1780704
+
+demo
+dir
+
+doc
+dir
+
+src
+dir
+
+data
+dir
+

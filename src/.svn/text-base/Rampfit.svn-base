@@ -1,0 +1,87 @@
+#Implementation of Rampfit
+#Ramp (x1,y1 - x2,y2) + two horizontal pieces with a fix length
+#Parameters: Search area for x1 and x2, length of horizontal piece
+
+#Uncertainty gets determined by bootstrap
+
+
+piecewise<-function(param,data)
+{
+	x1<-start(data)   #starting point
+	y1<-param[1]
+	
+	x2<-param[2]   #low point
+	y2<-param[3]
+
+	x3<-param[4]  #high point
+	y3<-param[5]
+
+	x4<-param[6]  #low point 2
+	y4<-param[7]
+
+	x5<-end(data)  #end point
+	y5<-param[8]
+
+	return(approx(c(x1,x2,x3,x4,x5),c(y1,y2,y3,y4,y5),time(data))$y)
+}
+
+
+
+### Rampe fitten mit 
+ramp<-function(param,data,flatwidth)
+{
+	x1<-param[1]   #starting point
+	y1<-param[2]
+	
+	x2<-param[3]   #low point
+	y2<-param[4]
+
+	partBefore <-window(data,x1-flatwidth,x1+0.001)
+	middle<-window(data,x1,x2+0.001)
+	partAfter  <-window(data,x2+0.001,x2+flatwidth+0.001)
+
+	partAfter[]<-y1
+	partBefore[]<-y2
+	return(c(partBefore,approx(c(x1,x2),c(y1,y2),time(middle))$y,partAfter))
+}
+
+
+cost<-function(param,data)
+{
+	return(rmse(data,piecewise(param,data)))
+
+}
+
+
+estimated<-matrix(NA,length(filelist),6)
+for (i in 1:length(filelist))
+{
+data<-data.sd[[i]]
+startvalues<-c(data[1],10,min(data))
+
+estimated[i,]<-nlminb(startvalues,cost,data=data)$par
+
+
+plot(data)
+lines(piecewise(estimated[i,],data),col="red")
+}
+
+
+
+
+
+
+
+### 
+blocksample<-function(data,blocklength=10)
+{
+	nblock<-ceiling(length(data)/blocklength)
+	starts<-floor(runif(nblock,min=1,max=length(data)-blocklength+1))
+	index<-rep(1:10,nblock) + rep(starts,each=10)
+	return(data[index[1:length(data)]])
+}
+
+
+dof.effective<-function(a1,n) n/(1+2/n*1/(1-a1)*(a1*(n-1/(1-a1))-a1^n*(1-1/(1-a1))))
+lopt<-function(a1,n) ceiling((6^(0.5)*a1/(1-a1)^2)^(2/3)*n^(1/3))
+
