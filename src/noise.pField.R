@@ -1,14 +1,16 @@
 #functions to create surrogate ts
 
+#surrogate timeseries with the same timebasis and autocorrelation (AR1) as the original
+#if order.max > 1, or order.max =NULL, than an AR-N process is fitted
+#if a1 is given, an AR1 process with a1 is created.
+#in the moment, the result is scaled (sd=1,mean=0)
+#ToDo: Add variance scaling
 
-#surrogate timeseries with the same timebasis and autocorrelation as the original
-#(based on AR1, / white noise)
-
-snoise.pTs <- function(ts,a1=NULL)
+snoise.pTs <- function(ts,a1=NULL,order.max=1)
 {
 if (is.null(a1))
 {
-ar_result<-ar(ts,order.max=1,aic=FALSE)
+if (order.max != 1) ar_result<-ar(ts,order.max=order.max,aic=TRUE) else ar_result<-ar(ts,order.max=1,aic=FALSE)
 nts<-pTs(scale(arima.sim(list(ar = ar_result$ar),length(ts))),time(ts),getlat(ts),getlon(ts),paste("Surrogate Noise ",getname(ts)))
 }
 else nts<-pTs(scale(arima.sim(list(ar = a1),length(ts))),time(ts),getlat(ts),getlon(ts),paste("Surrogate Noise ",getname(ts)))
@@ -16,20 +18,12 @@ else nts<-pTs(scale(arima.sim(list(ar = a1),length(ts))),time(ts),getlat(ts),get
 return(nts)
 }
 
-snoise.an.pTs <- function(ts,a1=NULL)
-{
-if (is.null(a1))
-{
-ar_result<-ar(ts,aic=TRUE)
-nts<-pTs(scale(arima.sim(list(ar = ar_result$ar),length(ts))),time(ts),getlat(ts),getlon(ts),paste("Surrogate Noise ",getname(ts)))
-}
-else nts<-pTs(scale(arima.sim(list(ar = a1),length(ts))),time(ts),getlat(ts),getlon(ts),paste("Surrogate Noise ",getname(ts)))
 
-return(nts)
-}
 
+### return ACF, timelag 1
 get.a1<-function(x) return(acf(c(x))$acf[2])
 
+### simulate a realization of an AR1 process with a1
 red<-function(a1,n) return(c(arima.sim(list(ar = a1),n)))
 
 #create noise with the same distribution, by folding a uniform distribution with
@@ -49,6 +43,8 @@ return(pTs(noise_sim,time(ts),name="enoise"))
 
 
 
+#create N.R random timeseries with the same autocovariance matrix as ts_in
+#see Haam and Huybers, PO 2010
 sur.cholesky<-function(ts_in, N.R){
 
 ### function to generate N.R realizations.
@@ -78,25 +74,36 @@ sur.cholesky<-function(ts_in, N.R){
 }
 
 
+###Simulate two timeseries, with length N, and the coherency cb
+## Coherency has to be a scalar, or a vector with half the length of N containing the
+##Coherency against frequency
+## Description in Huybers, Nature Geoscience 2008, Supplement, or in Wunsch timeseries primer
+sim.coh<-function(cb,N=1000)
+{
+if (length(cb)==1) cb<-rep(cb,N/2)
+    if (length(cb)!=(N/2)) stop("coherency has to have the length N/2")
+    cb[(N+1):(2*N)]<-cb[N:1]
 
-#xcorr<- function(x){
-#N<-length(x);
-#Hxy<-0;
-#Rxy<-0;
-#for (m in (1:(2*N-1))){
-#	if (N-m >=1){
-#		Rxy[m]<-0;
-#		for (n in (1:(N-m))){
-#			Rxy[m]<-(Rxy[m]+(x[n+m]*x[n]))};
-#			}
-#	if (N-m==0){
-#		j<-sum(x*x)}
-#	if (m>N){Hxy[m]<-0; Hxy[m]<-Rxy[m-N]}
-#	}
-#cde<-c(Rxy[length(Rxy):1],j,Hxy[(N+1):(2*N-1)]);
-#return(cde/max(cde));
-#}
-#
+  fx<-fft(rnorm(N));
+  fx<-fx/sum(abs(fx));
+  fy<-fft(rnorm(N));
+  fy<-fy/sum(abs(fy));
+  ys <-Re(fft(fy*sqrt(1-Conj(cb)^2),inverse=TRUE))/length(fy)
+  ys =ys+Re((fft((fx*Conj(cb)),inverse=TRUE)))/length(fx);
+  xs =Re((fft(fx,inverse=TRUE))/length(fx));
+ return(cbind(xs,ys))
+}
+
+
+
+### Testcode for the AR1 processes
+
+#test<-red(0.9,1000)
+#get.a1(test)
+#get.a1(snoise.pTs(test))
+#get.a1(red(get.a1(test),1000))
+
+# Tescode for sur.cholesky
 #a<-ts(rnorm(5000)+sin(1:5000/5))
 #b<-sur.cholesky(a,1)
 
