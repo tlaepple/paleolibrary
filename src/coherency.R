@@ -1,0 +1,119 @@
+## Coherency bias, Coherency significance (MC)
+## Phase confidence (MC), largely after Huybers / Wunsch Matlab implementation
+## Doku: Workbook
+
+#Coherency bias, Table based on .mat file from Huybers
+### Read the coherency bias mat file, only execute once
+
+#library(R.matlab)
+#cohbtable<-readMat("e:/data/paleoLibrary/data/cohbias.mat")
+#save(cohbtable,file="e:/data/paleoLibrary/data/cohbias.dat")
+
+load(file=paste(path,"../data/cohbias.dat",sep="")) #Read the bias table
+
+#Input scalar of vector of biased coherence (not squared coherence as in result$coh)
+cohbias<-function(cb,dof)
+{
+
+    if (dof<2) stop("dof has to be >=2")
+    if ((sum(cb<0)+sum(cb>1))>0)  stop("Coherence must be between 0 and 1")
+    if (dof > 50) {dof<-50; warning("Using 50 degrees of freedom")}
+
+    ec<-vector()
+### Interpolieren zum richtigen Freiheitsgrad
+    for (i in 1:length(cohbtable$c)) ec[i]<-approx(cohbtable$n,cohbtable$expect[,i],dof)$y
+#Interpolieren zu cb
+    result<-approx(ec,cohbtable$c,cb)$y
+    result[is.na(result)]<-0  ### NA coherencies = below the table values are set to zero
+    return(result)
+}
+
+
+## Calculate the minimum coherency to a given p-level, and smoothing (spans)
+## using MC simulations. x2 gets replaced by an AR1 process
+## Output is one global level
+mcCoherency<-function(x1,x2,spans=2,N.R=100,p=0.95)
+{
+    if (length(x1) != length(x2)) stop("length(x1) != lenght(x2)")
+    x1<-c(x1)
+    x2.a1<-get.a1(c(x2))
+    test<-spectrum(x1,plot=FALSE)
+    cohsave<-matrix(NA,N.R,length(test$freq))
+    for (i.R in 1:N.R)
+    {
+        temp<-spectrum(cbind(red(x2.a1,length(x2)),x1),spans=spans,plot=FALSE)
+        cohsave[i.R,]<-sqrt(temp$coh)
+      }
+   return(quantile(cohsave,p))
+}
+
+
+#return the index where abs(cx[index]-x) is minimal
+iNext<-function(cx,x)
+{
+    return(which.min(abs(cx-x)))
+}
+
+#Calculate the width of the phase confidence limits given the dof and the coherency
+#extracted from plot.spec.phase = Bloomfield ?
+#coh is NOT the squared coherency (therefore use sqrt(x$coh))
+#The confidence limits are therefore phase-cl and phase+cl
+confPhase<-function(coh,dof,ci=0.95,debias=FALSE)
+{
+    if (debias) coh=cohbias(coh,dof)
+   gg <- 2/dof
+        cl <- asin(pmin(0.9999, qt(ci, 2/gg - 2) * sqrt(gg *
+            (coh^{
+                -2
+            } - 1)/(2 * (1 - gg)))))
+return(cl)
+}
+
+## Extract phase and coherency from spec at the frequencies specified at freq
+extractPhase<-function(spec,freq)
+{
+result.angle<-matrix(NA,3,length(freq))
+result.time<-result.angle
+   result.coh<-vector()
+   for (i in 1:length(freq))
+   {
+       index<-iNext(x$freq,freq[i])
+       result.angle[1,i]<-x$phase[index]-cl[index]
+       result.angle[2,i]<-x$phase[index]
+       result.angle[3,i]<-x$phase[index]+cl[index]
+       result.time[,i]<-result.angle[,i]/2/pi*(1/freq[i])
+       result.coh[i]<-sqrt(x$coh[index])
+   }
+   return(list(angle=result.angle,time=result.time,coh=result.coh))
+}
+
+#Derive the confidence bands for the phase using MC experiment
+
+#Calculate the width of the phase confidence limits given the dof and the coherency
+#extracted from plot.spec.phase = Bloomfield ?
+#coh is NOT the squared coherency (therefore use sqrt(x$coh))
+#The confidence limits are therefore phase-cl and phase+cl
+confPhase.mc<-function(coh,dof,ci=0.95,removeBias=FALSE,spans=2,N.R=1000)
+{
+    if (removeBias) coh=cohBias(coh,dof)
+
+    aphase<-matrix(NA,N.R,length(coh))
+
+    for (i.R in 1:N.R)
+    {
+        temp<-sim.coh(coh,length(coh)*2)
+        aphase[i.R,]<-spectrum(temp,spans=spans,plot=FALSE)$phase
+    }
+    dc<-(1-ci)/2
+   cl.both<-apply(aphase,2,quantile,c(dc,1-dc))
+   cl<-(cl.both[2,]-cl.both[1,])/2
+
+
+return(cl)
+}
+
+
+### Phase/Coherency plot
+
+
+### Phase/Coherency extraction
