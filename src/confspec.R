@@ -1,4 +1,4 @@
-# Aim: 
+# Aim:
 # Date:
 # Documentation:
 
@@ -37,7 +37,7 @@ ar1fit<-function(spec,tss,bLog=TRUE,fmax=NULL)
 	estimated<-nlminb(startvalues,cost,lower=c(0,0),upper=c(1000,0.99),spec=spec,iMax=iMax,bLog=bLog)
 	return(estimated)
 }
- 
+
 
 
 smoothspec<-function(spec,m)
@@ -49,7 +49,7 @@ smoothspec<-function(spec,m)
 specConf<-function(x,p=0.05,p2=0.01,N.R=1000,m=0,spans,fmax=NULL,bLog=F,bMC=F,bMeanspec=F, ...)
 {
 	spec<-spectrum(x,spans=spans, ...)
-	
+
 
 	if (m>0)  {
 		spec<-smoothspec(spec,m)
@@ -71,7 +71,7 @@ if (bMC)
 	specs<-matrix(0,N.R,length(firstspec$spec))
 	for (i in 1:N.R) specs[i,]<-spectrum(red(fit$par[1],length(x))*sdsample,plot=F,spans=fixspans)$spec
 	meanspec<-apply(specs,2,mean)
-} else 
+} else
 {
 
 	meanspec<-specred(fit$par[1],fit$par[2],spec$freq,0.5/spec$freq[length(spec$freq)])
@@ -90,6 +90,125 @@ if (bMC)
 
 }
 
+#x2 gets replaced by noise
+mcCoherency<-function(x1,x2,spans=2,N.R=100,p=0.95)
+{
+    test<-spectrum(x1)
+    cohsave<-matrix(NA,N.R,length(test$freq))
+    for (i.R in 1:N.R)
+    {
+        temp<-spectrum(cbind(snoise.pTs(x2),x1),spans=spans,plot=F)
+       # plot.spec.coherency(temp)
+        cohsave[i.R,]<-sqrt(temp$coh)
+      }
+   return(quantile(cohsave,p))
+}
+
+mcCoherency(all.lr04[,5],all.lr04[,1],spans=c(10))
+mcCoherency(w(alf.lr04),w(all.lr04[,1]),spans=c(10))
+
+iNext<-function(cx,x)
+{
+    return(which.min(abs(cx-x)))
+}
+
+confPhase<-function(x,freq,ci=0.95)
+{
+   gg <- 2/x$df
+        coh <- sqrt(x$coh)
+        cl <- asin(pmin(0.9999, qt(ci, 2/gg - 2) * sqrt(gg *
+            (coh^{
+                -2
+            } - 1)/(2 * (1 - gg)))))
 
 
+result.angle<-matrix(NA,3,length(freq))
+result.time<-result.angle
+   result.coh<-vector()
+   for (i in 1:length(freq))
+   {
+       index<-iNext(x$freq,freq[i])
+       result.angle[1,i]<-x$phase[index]-cl[index]
+       result.angle[2,i]<-x$phase[index]
+       result.angle[3,i]<-x$phase[index]+cl[index]
+       result.time[,i]<-result.angle[,i]/2/pi*(1/freq[i])
+       result.coh[i]<-sqrt(x$coh[index])
+   }
+   return(list(angle=result.angle,time=result.time,coh=result.coh))
+}
 
+### Validieren
+#all<-ts(rnorm(1000))
+#a<-all[-(1:10)]
+#b<-all[-(991:1000)]
+ #  result<-    spectrum(cbind(a,b),spans=10)
+#plot(result,plot.type="phase")
+#confPhase(result,0.04)
+
+save<-matrix(NA,3,100)
+for (i.R in 1:100)
+{
+ t1<-pTs(rnorm(length(w(alf.lr04))),time(w(alf.lr04)))
+ t2<-0.5*t1+pTs(rnorm(length(w(alf.lr04))),time(w(alf.lr04)))
+
+result.alf<-spectrum(cbind(t1,t2), spans=c(20),log="no",xlim=c(0,0.1))
+# plot.spec.phase(result.alf,xlim=c(0,0.1))
+save[,i.R]<-confPhase(result.alf,c(1/105,1/41,1/21))$time[,3]
+}
+
+hist(save[2,])
+hist(save[1,])
+hist(save[3,])
+
+sum(save[3,]<0)
+
+plot(result.alf$coh)
+
+
+###Simulate two timeseries, with length N, and the coherency cb
+##
+simWCoherency<-function(cb,N=1000)
+{
+
+    if (length(cb)!=(N/2)) stop("coherency has to have the length N/2")
+    cb[(N+1):(2*N)]<-cb[N:1]
+
+
+  fx<-fft(rnorm(N));
+  fx<-fx/sum(abs(fx));
+  fy<-fft(rnorm(N));
+  fy<-fy/sum(abs(fy));
+  ys <-Re(fft(fy*sqrt(1-Conj(cb)^2),inverse=TRUE))/length(fy)
+  ys =ys+Re((fft((fx*Conj(cb)),inverse=TRUE)))/length(fx);
+  xs =Re((fft(fx,inverse=TRUE))/length(fx));
+ return(cbind(xs,ys))
+}
+
+
+### Read the coherency bias mat file
+
+library(R.matlab)
+cohraw<-readMat("e:/data/paleoLibrary/data/cohbias.mat")
+save(cohraw,file="e:/data/paleoLibrary/data/cohbias.dat")
+
+cb<-0.5
+v<-0.8
+
+### Interpoliere die ensprechenden Stellen in y Richtung zum richtigen Freiheitsgrad
+
+ec<-vector()
+### Interpolieren zum richtigen Freiheitsgrad
+for (i in 1:length(cohraw$c)) ec[i]<-approx(cohraw$n,cohraw$expect[,i],v)$y
+#Interpolieren zu cb
+approx(ec,cohraw$c,cb)$y
+
+end;
+
+
+cu=cu(:);
+
+pl=find(isnan(cu)==1 & cb<1 & cb>=0); %If cu is NaN while cb is between (0,1)
+cu(pl)=0;
+
+
+spectrum(rnorm(1000),spans=10)$df

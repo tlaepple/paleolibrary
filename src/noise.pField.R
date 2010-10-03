@@ -21,7 +21,7 @@ return(nts)
 
 
 ### return ACF, timelag 1
-get.a1<-function(x) return(acf(c(x))$acf[2])
+get.a1<-function(x) return(acf(c(x),plot=FALSE)$acf[2])
 
 ### simulate a realization of an AR1 process with a1
 red<-function(a1,n) return(c(arima.sim(list(ar = a1),n)))
@@ -78,22 +78,36 @@ sur.cholesky<-function(ts_in, N.R){
 ## Coherency has to be a scalar, or a vector with half the length of N containing the
 ##Coherency against frequency
 ## Description in Huybers, Nature Geoscience 2008, Supplement, or in Wunsch timeseries primer
+## Not yet clear if we have a shift in the result
 sim.coh<-function(cb,N=1000)
 {
-if (length(cb)==1) cb<-rep(cb,N/2)
-    if (length(cb)!=(N/2)) stop("coherency has to have the length N/2")
-    cb[(N+1):(2*N)]<-cb[N:1]
+if (length(cb)==1) cb<-rep(cb,N/2) #Coherency = scalar, than set all coherencies to this value
+NC<-length(cb) #Length of the coherency vector
+    if (NC!=(N/2)) stop("coherency has to have the length N/2")
+#    cb[(NC+1):(2*NC)]<-cb[NC:1]
 
-  fx<-fft(rnorm(N));
+cb[2:(NC+1)]<-cb
+cb[(NC+1):(2*NC)]<-cb[(NC+1):1]
+
+#Frequencies at 0 and at pi
+
+fx<-fft(rnorm(N));
   fx<-fx/sum(abs(fx));
   fy<-fft(rnorm(N));
   fy<-fy/sum(abs(fy));
   ys <-Re(fft(fy*sqrt(1-Conj(cb)^2),inverse=TRUE))/length(fy)
-  ys =ys+Re((fft((fx*Conj(cb)),inverse=TRUE)))/length(fx);
-  xs =Re((fft(fx,inverse=TRUE))/length(fx));
+  ys <-ys+Re((fft((fx*Conj(cb)),inverse=TRUE)))/length(fx);
+  xs <-Re((fft(fx,inverse=TRUE))/length(fx));
  return(cbind(xs,ys))
 }
 
+
+
+####
+a<-rnorm(100)
+b<-abs(fft(a))^2
+plot(b[2:50])
+lines(b[100:51],col="red")
 
 
 ### Testcode for the AR1 processes

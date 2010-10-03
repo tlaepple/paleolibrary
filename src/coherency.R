@@ -54,14 +54,14 @@ iNext<-function(cx,x)
     return(which.min(abs(cx-x)))
 }
 
-#Calculate the width of the phase confidence limits given the dof and the coherency
+#Calculate the width of the phase confidence limits given the df and the coherency
 #extracted from plot.spec.phase = Bloomfield ?
 #coh is NOT the squared coherency (therefore use sqrt(x$coh))
 #The confidence limits are therefore phase-cl and phase+cl
-confPhase<-function(coh,dof,ci=0.95,debias=FALSE)
+confPhase<-function(coh,df,ci=0.95,debias=FALSE)
 {
-    if (debias) coh=cohbias(coh,dof)
-   gg <- 2/dof
+    if (debias) coh=cohbias(coh,df)
+   gg <- 2/df
         cl <- asin(pmin(0.9999, qt(ci, 2/gg - 2) * sqrt(gg *
             (coh^{
                 -2
@@ -70,7 +70,7 @@ return(cl)
 }
 
 ## Extract phase and coherency from spec at the frequencies specified at freq
-extractPhase<-function(spec,freq)
+extractPhase<-function(x,cl,freq)
 {
 result.angle<-matrix(NA,3,length(freq))
 result.time<-result.angle
@@ -93,9 +93,9 @@ result.time<-result.angle
 #extracted from plot.spec.phase = Bloomfield ?
 #coh is NOT the squared coherency (therefore use sqrt(x$coh))
 #The confidence limits are therefore phase-cl and phase+cl
-confPhase.mc<-function(coh,dof,ci=0.95,removeBias=FALSE,spans=2,N.R=1000)
+confPhase.mc<-function(coh,df,ci=0.95,debias=FALSE,spans=2,N.R=1000)
 {
-    if (removeBias) coh=cohBias(coh,dof)
+    if (debias) coh=cohbias(coh,df)
 
     aphase<-matrix(NA,N.R,length(coh))
 
@@ -113,7 +113,3 @@ return(cl)
 }
 
 
-### Phase/Coherency plot
-
-
-### Phase/Coherency extraction
