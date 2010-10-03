@@ -14,7 +14,7 @@ nts<-pTs(scale(arima.sim(list(ar = ar_result$ar),length(ts))),time(ts),getlat(ts
 else nts<-pTs(scale(arima.sim(list(ar = a1),length(ts))),time(ts),getlat(ts),getlon(ts),paste("Surrogate Noise ",getname(ts)))
 
 return(nts)
-}	
+}
 
 snoise.an.pTs <- function(ts,a1=NULL)
 {
@@ -26,8 +26,9 @@ nts<-pTs(scale(arima.sim(list(ar = ar_result$ar),length(ts))),time(ts),getlat(ts
 else nts<-pTs(scale(arima.sim(list(ar = a1),length(ts))),time(ts),getlat(ts),getlon(ts),paste("Surrogate Noise ",getname(ts)))
 
 return(nts)
-}	
+}
 
+get.a1<-function(x) return(acf(c(x))$acf[2])
 
 red<-function(a1,n) return(c(arima.sim(list(ar = a1),n)))
 
@@ -54,28 +55,28 @@ sur.cholesky<-function(ts_in, N.R){
 
 		ts_work<-scale(ts_in)
 		TS<-matrix(0, nrow=length(ts_work), ncol=N.R);
-		cv<-acf(ts_work,lag.max=length(ts_work),plot=F)$acf;		
-	
+		cv<-acf(ts_work,lag.max=length(ts_work),plot=F)$acf;
+
 	#Build autocovariance matrix !?
 		cvcs<-matrix(0, nrow=length(cv), ncol=length(cv));
 		for (i in 1:(length(cv)-1)) cvcs[,i]<-c(cv[(i:1)],cv[2:(length(cv)-i+1)])
 	 	cvcs[,length(cv)]<-rev(cv)
 
 
-	
-			#erster Part: Umgedreht: 1tes, 2.1. 3.2.1. 4.3.2.1.
-			# dann alle bis auf die letzten i 
 
-			
-	
+			#erster Part: Umgedreht: 1tes, 2.1. 3.2.1. 4.3.2.1.
+			# dann alle bis auf die letzten i
+
+
+
 		U<-chol(cvcs);	# cholesky decomposition.
-		
+
 		M<-matrix(rnorm(N.R*max(dim(U))), nrow=N.R, ncol=max(dim(U)));
 		TS<-t(M%*%U);
-		
-				
+
+
 }
-	
+
 
 
 #xcorr<- function(x){
@@ -103,7 +104,7 @@ sur.cholesky<-function(ts_in, N.R){
 #spectrum(a,col="red",spans=c(3,3),add=T)
 
 ### Normale Korrelation mit kortest; Signifikanz spielt keine Rolle da immer Lokal
-#Surrogate 
+#Surrogate
 
 
 
