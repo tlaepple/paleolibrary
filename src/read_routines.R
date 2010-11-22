@@ -155,7 +155,7 @@ return(data)
 
 
 #uses ncdf,chron
-read_ncep <- function(FILENAME="C:/data/NCEP/DJFslp.nc",varname="slp",name="")
+read_ncep <- function(FILENAME="",varname="",name="")
 {
 temp.nc = open.ncdf(FILENAME)
 
