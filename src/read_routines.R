@@ -1,3 +1,132 @@
+#Universal reading function for netcdf files
+
+read_data<-function(FILENAME="",varname=NULL,name="",lonname=NULL,latname=NULL,missVal=c(-1e+20,1e+20))
+ {
+    temp.nc = open.ncdf(FILENAME)
+
+    # read varname from temp.nc
+    if(is.null(varname)){
+        if(temp.nc$nvars>1){
+            varnames<-c()
+            for (i in 1:length(temp.nc$var)){
+                    varnames<-c(varnames,temp.nc$var[[i]]$name)
+            }
+        print("following varnames are given:")
+        for (i in 1:length(varnames)){print(varnames[i])}
+   stop("you have to specify varname")
+        }
+        varname<-temp.nc$var[[1]]$name
+    }
+       # read name for lon and lat variabels from temp.nc
+    if(is.null(lonname)){
+        lonnames<-c("lon","longitude") # list of known lonnames
+        lonname<-find.var(temp.nc,lonnames)[1]
+    }
+    if(is.null(latname)){
+        latnames<-c("lat","latitude")     # list of known latnames
+        latname<-find.var(temp.nc,latnames)[1]
+    }
+
+    
+    #Read out the data
+    temp.time <- get.var.ncdf(temp.nc,"time")
+    temp.data <-get.var.ncdf(temp.nc,varname)
+    temp.lat <-get.var.ncdf(temp.nc,latname)
+    temp.lon <-get.var.ncdf(temp.nc,lonname)
+       #convert from missVal given values to NA
+    temp.data[temp.data<=missVal[1]]<-NA
+    temp.data[temp.data>=missVal[2]]<-NA
+
+
+    if (length(temp.time)>1)
+      {
+        ##convert dates for yearly and monthly data
+        # get informations about "time"-variable
+        timevar<-as.numeric(find.var(temp.nc,"time")[2:3])
+        unit.time<-temp.nc$var[[timevar[1]]]$dim[[timevar[2]]]$units
+        diff.time<-max(diff(temp.nc$var[[timevar[1]]]$dim[[timevar[2]]]$vals))
+                                        #diff.time<-temp.nc$var[[timevar[1]]]$dim[[timevar[2]]]$vals[[2]]-temp.nc$var[[timevar[1]]]$dim[[timevar[2]]]$vals[[1]]
+        
+        if(unit.time=="day as %Y%m%d.%f"){
+          if(diff.time<10000){
+            year <- floor(temp.time/10000)
+            temp.date <- year + (floor((temp.time-(year*10000))/100)-1)/12
+          }else{
+            if(diff.time==10000){
+              temp.date<-temp.time%/%10000
+            }else{
+              if(min(diff(temp.nc$var[[timevar[1]]]$dim[[timevar[2]]]$vals))==1){
+                d.year<-floor(temp.time/10000)
+                reftime<-julday.own(floor(temp.time[1]/10000)*10000+101)
+                d.day<-julday.own(temp.time)-reftime
+                len<-length(temp.date)
+                d.day[d.day>(len-1)]<-d.day[d.day>(len-1)]-len
+                temp.date<-d.year+d.day/365
+              }else{stop("time steps are not daily, monthly or yearly")}
+            }}
+        }else{
+          if(unit.time=="hours since 1-1-1 00:00:0.0"|unit.time=="hours since 1-01-01 00:00"){
+            if (diff.time==24){
+              temp.date<-(chron(temp.time/24,origin=c(month=1,day=1,year=01)))
+              d.year<-as.numeric(as.character(years(temp.date)))
+              d.day<-as.numeric(temp.date-chron(paste("1/1/",years(temp.date),sep="")))
+              temp.date<-d.year+d.day/365
+              
+            }else{
+              temp.date <- as.vector(as.yearmon(chron(temp.time/24,origin=c(month=1,day=1,year=01))))
+            }
+          }else{
+            if(length(grep(glob2rx("days since ????-??-?? ??:??"),unit.time))){
+              start.year<-as.numeric(sub("-..-.....:..","",sub("days since ","",unit.time)))
+              start.mon<-as.numeric(sub("-.....:..","",sub("days since ....-","",unit.time)))
+              start.day<-as.numeric(sub("...:..","",sub("days since ....-..-","",unit.time)))
+              abs.start.day<-julday(start.mon,start.day,2001)-julday(1,1,2001)
+              
+              d.day<-(temp.time+abs.start.day)/365
+              temp.date<-start.year+d.day
+            }else{
+              if(length(grep(glob2rx("days since ???-??-?? ??:??:??"),unit.time))){
+                start.year<-as.numeric(sub("-..-.....:..:..","",sub("days since ","",unit.time)))
+                start.mon<-as.numeric(sub("-.....:..:..","",sub("days since ...-","",unit.time)))
+                start.day<-as.numeric(sub("...:..:..","",sub("days since ...-..-","",unit.time)))
+              #  abs.start.day<-julday(start.mon,start.day,2001)-julday(1,1,2001)
+                temp.date <- as.vector(as.yearmon(chron(temp.time,origin=c(month=start.mon,day=start.day,year=start.year))))
+                # cut after comma 
+                temp.date<-floor(temp.date)
+              #  d.day<-(temp.time+abs.start.day)/365
+              #  temp.date<-start.year+d.day
+              }
+              else{stop(paste("time format",unit.time,"not supported by read_data"))}
+            }
+          }
+        }
+
+    #Sort the latitudes
+    tmp<-sort(temp.lat,index.return=TRUE)
+    temp.lat<-temp.lat[tmp$ix]
+    temp.data<-temp.data[,tmp$ix,]
+       #sort the longitudes
+    temp.lon[temp.lon<0]<-temp.lon[temp.lon<0]+360
+    tmp<-sort(temp.lon,index.return=TRUE)
+    temp.lon<-temp.lon[tmp$ix]
+    temp.data<-temp.data[tmp$ix,,]
+  }
+    else
+      {
+          #Sort the latitudes
+    tmp<-sort(temp.lat,index.return=TRUE)
+    temp.lat<-temp.lat[tmp$ix]
+    temp.data<-temp.data[,tmp$ix]
+       #sort the longitudes
+    temp.lon[temp.lon<0]<-temp.lon[temp.lon<0]+360
+    tmp<-sort(temp.lon,index.return=TRUE)
+    temp.lon<-temp.lon[tmp$ix]
+    temp.data<-temp.data[tmp$ix,]
+      }
+
+   return(pField(temp.data,temp.date,lat=temp.lat,lon=temp.lon,name=name,history=FILENAME))
+ }
+
 read.rodgers.nao<-function(FILENAME="/home/tlaepple/data/optimalforecast/Rogers_NAO_monthly_normalized_anomalies.txt")
 {
 temp<-read.table(FILENAME,skip=3,na.strings="-9999.0")
@@ -40,7 +169,7 @@ return(data)
 
 
 #uses ncdf,chron
-read_ncep <- function(FILENAME="C:/data/NCEP/DJFslp.nc",varname="slp",name="")
+read_ncep <- function(FILENAME="",varname="",name="")
 {
 temp.nc = open.ncdf(FILENAME)
 

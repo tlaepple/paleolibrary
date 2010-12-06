@@ -1,8 +1,7 @@
 ### Testcode for coherency.R
 
-
 result<-vector()
-for (i in 2:40) result[i]<-cohbias(0.5,i)
+for (i in 2:40) result[i]<-cohbias(0.6,i)
 plot(1:40,result,xlab="DOF",ylab="corrected coherence")
 abline(h=0.5)
 

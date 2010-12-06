@@ -19,20 +19,25 @@ source(paste(path,'plotlib.R',sep=""))       #plotting routines
 source(paste(path,'read_routines.R',sep="")) #reading routines
 source(paste(path,'indices.R',sep=""))       #standard climate indices
 source(paste(path,'roll.pField.R',sep=""))   #running/rolling functions
-source(paste(path,'noise.pField.R',sep=""))  #surrogate timeseries for MonteCarlo
-source(paste(path,'filter.R',sep=""))        #lowpass and bandpass filter caclulation
-source(paste(path,'season.R',sep=""))                #season averages/ 
-source(paste(path,'insolation.R',sep=""))  
-source(paste(path,'zonalmean.R',sep=""))                              #Insolation Code / 
 
-source(paste(path,'ownfunctions.R',sep=""))                #put your own functions / 
+source(paste(path,'noise.pField.R',sep=""))  #surrogate timeseries for MonteCarlo
+
+source(paste(path,'filter.R',sep=""))        #lowpass and bandpass filter caclulation
+source(paste(path,'season.R',sep=""))                #season averages/
+source(paste(path,'insolation.R',sep=""))
+source(paste(path,'zonalmean.R',sep=""))                              #Insolation Code /
+source(paste(path,'coherency.R',sep=""))
+source(paste(path,'confspec.R',sep=""))
+
+
+source(paste(path,'ownfunctions.R',sep=""))                #put your own functions /
 							                  #changed functions here
 
 
-source(paste(path,'selspace.interp.R',sep=""))   
+source(paste(path,'selspace.interp.R',sep=""))
 
 
-source(paste(path,'robust.R',sep=""))   
+source(paste(path,'robust.R',sep=""))
 
-source(paste(path,'confspec.R',sep=""))   
+source(paste(path,'confspec.R',sep=""))
 

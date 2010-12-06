@@ -103,12 +103,6 @@ fx<-fft(rnorm(N));
 
 
 
-####
-a<-rnorm(100)
-b<-abs(fft(a))^2
-plot(b[2:50])
-lines(b[100:51],col="red")
-
 
 ### Testcode for the AR1 processes
 
