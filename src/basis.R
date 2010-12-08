@@ -235,3 +235,26 @@ applyData<-function(x,fun,... )
 
 
 
+## Converts a list of single pTs timeseries to one pTs object
+## x = list containing the pTs objects; all need to have the same length
+## returns a pTs object with all the timeseries of x, including the
+#lat/lon and name information
+list2pTs<-function(x)
+{
+    TOLERANCE = 0.01 #tolerance for different time steps
+
+    N<-length(x) #Number of timeseries in the list
+    newTime<-time(x[[1]])
+    names<-lapply(x,getname)  #get all anmes
+    lat<-lapply(x,getlat)   #get the latitudes
+    lon<-lapply(x,getlon) #get the longitudes
+
+    result<-pTs(NA,newTime,lat,lon,names)
+    for (i in 1:length(x))
+    {
+       if  (sum((newTime-time(x[[i]]))^2) > TOLERANCE) stop("time steps
+are different in the different timeseries")
+       result[,i]<-x[[i]]
+    }
+return(result)
+}

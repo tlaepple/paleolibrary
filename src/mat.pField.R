@@ -12,7 +12,7 @@ scale.pField <- function(x, center = TRUE, scale = TRUE)
     return(result)
 }
 
-
+# 
 scale.pTs <- function(x, center = TRUE, scale = TRUE)
 {
     hist<-gethistory(x)
@@ -159,7 +159,13 @@ prcompO.pField <- function(data,nPc=10,center=TRUE,scale=TRUE, ...)
 
 
 
-
+# takes a timeseries (ts) and 3 dim field and builds composite
+# maps (maximum and minimum)
+# input: ts    : pTs object, timeseries with extrema
+#        field : p.field object where maps are selected from
+#        sign  : boolean, TRUE takes positive against negative,
+#                 FALSE takes threshold as declared in sd and sm
+#         pval  : if TRUE returns maps with significance levels
 composite.pTs <- function(ts,field,sign=FALSE,pval=TRUE,sp=sd(ts),sm=(-1*sp))
 {
 	temp<-attributes(field)
@@ -188,6 +194,8 @@ composite.pTs <- function(ts,field,sign=FALSE,pval=TRUE,sp=sd(ts),sm=(-1*sp))
 	
 	field.plus<-field[index.plus,]
 	field.minus<-field[index.minus,]
+
+        
 	if (pval)
 	{
 	field.p.plus<-rep(NA,ncol(field))
