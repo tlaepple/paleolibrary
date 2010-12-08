@@ -1,5 +1,5 @@
 #Implementation of standard finite response filters, e.g. Bloomfield 1976, linear filtering
-
+# 
 #Derives and plots the transfer function (given a filter)
 get.transfer<-function(g.u,resolution=100,plot=T,add=F, ...)
 {
