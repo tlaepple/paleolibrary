@@ -1,5 +1,5 @@
 #Universal reading function for netcdf files
-
+#Update to read files only containing one single file
 read_data<-function(FILENAME="",varname=NULL,name="",lonname=NULL,latname=NULL,missVal=c(-1e+20,1e+20))
  {
     temp.nc = open.ncdf(FILENAME)
@@ -124,7 +124,9 @@ read_data<-function(FILENAME="",varname=NULL,name="",lonname=NULL,latname=NULL,m
     temp.data<-temp.data[tmp$ix,]
       }
 
-   return(pField(temp.data,temp.date,lat=temp.lat,lon=temp.lon,name=name,history=FILENAME))
+#Check if multiple timesteps are contained; For single fields (e.g. Trends) return the single field with time 1
+   if (length(temp.time)>1) return(pField(temp.data,temp.date,lat=temp.lat,lon=temp.lon,name=name,history=FILENAME)) else
+    return(pField(temp.data,1,lat=temp.lat,lon=temp.lon,name=name,history=FILENAME))
  }
 
 read.rodgers.nao<-function(FILENAME="/home/tlaepple/data/optimalforecast/Rogers_NAO_monthly_normalized_anomalies.txt")
