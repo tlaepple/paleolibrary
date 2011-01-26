@@ -6,7 +6,7 @@ library(zoo)   #some timeseries function
 library(ncdf)  #netcdf handling
 library(lattice) #wireframe plot
 library(Rwave) #Wavelet analysis
-library(sowas)
+#library(sowas)
                                         #library(spatstat) #Spatial statistics
 
 
@@ -28,6 +28,9 @@ source(paste(path,'insolation.R',sep=""))
 source(paste(path,'zonalmean.R',sep=""))                              #Insolation Code /
 source(paste(path,'coherency.R',sep=""))
 source(paste(path,'confspec.R',sep=""))
+
+source(paste(path,'paleo.symbols.R',sep=""))
+
 
 
 source(paste(path,'ownfunctions.R',sep=""))                #put your own functions /

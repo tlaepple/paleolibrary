@@ -107,6 +107,15 @@ return(list(Fsw=Fsw,ecc=ecc,obliquity=obliquity,long_perh=long_perh,lambda=lambd
 }
 
 
+
+annual_insolation<-function(kyear,lat)
+{
+    result<-vector()
+    for (i in 1:length(kyear)) result[i]<-mean(daily_insolation(kyear[i],lat,1:365)$Fsw)
+    return(result)
+}
+
+
 daily_insolation<-function(kyear,lat,day,day_type=1,fast=T)
 {
 # Usage:
@@ -332,7 +341,6 @@ ins.dec21.param<-function(ecc,obliquity,long_perh,LAT)
 	r<-tlag(r$Fsw,shift)
 	return(r)
 }
-
 
 
 
