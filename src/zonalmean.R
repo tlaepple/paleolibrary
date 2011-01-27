@@ -16,12 +16,12 @@ hovmoeller<-function(data,refperiod=c(start(data)[1],end(data)[1]),xlab="time",y
 {
 	zmeans<-latmean(data)
 	refmeans<-latmean(window(data,refperiod[1],refperiod[2]))
-	
+
 	zmeans.anomaly<-zmeans-rep(colMeans(refmeans),each=dim(zmeans)[1])
       ##Reference period
   	 palette=colorRampPalette(c("violetred4","blue","steelblue", "lightgreen","white", "yellow","orange","red","brown"))
                          	filled.contour.own(time(data),getlat(data),zmeans.anomaly,color=palette,xlab=xlab,ylab=ylab,FUN=FUN)
-	
+
 }
 
 ##Missing values für die PC entfernen und nachher wieder zurück geben
@@ -33,6 +33,7 @@ zonalmean<-function(data)
 	result<-list()
 	result$zmean=latmean(data)
 	result$lat = getlat(data)
+                result$time=time(data)
 	return(result)
 }
 
