@@ -1,6 +1,7 @@
 #Universal reading function for netcdf files
 #Update to read files only containing one single file
-read_data<-function(FILENAME="",varname=NULL,name="",lonname=NULL,latname=NULL,missVal=c(-1e+20,1e+20))
+#if bClim = TRUE than it expects 12 values and gives them the months 1...12
+read_data<-function(FILENAME="",varname=NULL,name="",lonname=NULL,latname=NULL,missVal=c(-1e+20,1e+20),bClim=FALSE)
  {
     temp.nc = open.ncdf(FILENAME)
 
@@ -27,7 +28,7 @@ read_data<-function(FILENAME="",varname=NULL,name="",lonname=NULL,latname=NULL,m
         latname<-find.var(temp.nc,latnames)[1]
     }
 
-    
+
     #Read out the data
     temp.time <- get.var.ncdf(temp.nc,"time")
     temp.data <-get.var.ncdf(temp.nc,varname)
@@ -37,16 +38,21 @@ read_data<-function(FILENAME="",varname=NULL,name="",lonname=NULL,latname=NULL,m
     temp.data[temp.data<=missVal[1]]<-NA
     temp.data[temp.data>=missVal[2]]<-NA
 
+    if (bClim & (length(temp.time))!=12) stop("bClim was choosen but != 12 timesteps in the dataset")
+
 
     if (length(temp.time)>1)
       {
+
+          if (!bClim)
+          {
         ##convert dates for yearly and monthly data
         # get informations about "time"-variable
         timevar<-as.numeric(find.var(temp.nc,"time")[2:3])
         unit.time<-temp.nc$var[[timevar[1]]]$dim[[timevar[2]]]$units
         diff.time<-max(diff(temp.nc$var[[timevar[1]]]$dim[[timevar[2]]]$vals))
                                         #diff.time<-temp.nc$var[[timevar[1]]]$dim[[timevar[2]]]$vals[[2]]-temp.nc$var[[timevar[1]]]$dim[[timevar[2]]]$vals[[1]]
-        
+
         if(unit.time=="day as %Y%m%d.%f"){
           if(diff.time<10000){
             year <- floor(temp.time/10000)
@@ -71,7 +77,7 @@ read_data<-function(FILENAME="",varname=NULL,name="",lonname=NULL,latname=NULL,m
               d.year<-as.numeric(as.character(years(temp.date)))
               d.day<-as.numeric(temp.date-chron(paste("1/1/",years(temp.date),sep="")))
               temp.date<-d.year+d.day/365
-              
+
             }else{
               temp.date <- as.vector(as.yearmon(chron(temp.time/24,origin=c(month=1,day=1,year=01))))
             }
@@ -81,7 +87,7 @@ read_data<-function(FILENAME="",varname=NULL,name="",lonname=NULL,latname=NULL,m
               start.mon<-as.numeric(sub("-.....:..","",sub("days since ....-","",unit.time)))
               start.day<-as.numeric(sub("...:..","",sub("days since ....-..-","",unit.time)))
               abs.start.day<-julday(start.mon,start.day,2001)-julday(1,1,2001)
-              
+
               d.day<-(temp.time+abs.start.day)/365
               temp.date<-start.year+d.day
             }else{
@@ -91,7 +97,7 @@ read_data<-function(FILENAME="",varname=NULL,name="",lonname=NULL,latname=NULL,m
                 start.day<-as.numeric(sub("...:..:..","",sub("days since ...-..-","",unit.time)))
               #  abs.start.day<-julday(start.mon,start.day,2001)-julday(1,1,2001)
                 temp.date <- as.vector(as.yearmon(chron(temp.time,origin=c(month=start.mon,day=start.day,year=start.year))))
-                # cut after comma 
+                # cut after comma
                 temp.date<-floor(temp.date)
               #  d.day<-(temp.time+abs.start.day)/365
               #  temp.date<-start.year+d.day
@@ -100,6 +106,7 @@ read_data<-function(FILENAME="",varname=NULL,name="",lonname=NULL,latname=NULL,m
             }
           }
         }
+    } else temp.date=1:12
 
     #Sort the latitudes
     tmp<-sort(temp.lat,index.return=TRUE)

@@ -57,11 +57,12 @@ read_data<-function(FILENAME="",varname=NULL,name="",lonname=NULL,latname=NULL,m
           if(diff.time<10000){
             year <- floor(temp.time/10000)
             temp.date <- year + (floor((temp.time-(year*10000))/100)-1)/12
-          }else{
-            if(diff.time==10000){
+          }else{  #1000 or multiples are interpreted as years
+            if((min(diff(temp.nc$var[[timevar[1]]]$dim[[timevar[2]]]$vals)) == diff.time))
+            {
               temp.date<-temp.time%/%10000
-            }else{
-              if(min(diff(temp.nc$var[[timevar[1]]]$dim[[timevar[2]]]$vals))==1){
+            } else{
+              if (min(diff(temp.nc$var[[timevar[1]]]$dim[[timevar[2]]]$vals))==1) {
                 d.year<-floor(temp.time/10000)
                 reftime<-julday.own(floor(temp.time[1]/10000)*10000+101)
                 d.day<-julday.own(temp.time)-reftime
