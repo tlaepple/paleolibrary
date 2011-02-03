@@ -89,3 +89,29 @@ if (bMC)
 
 
 }
+
+
+
+specLocalConf<-function(x,p=0.05,spans=NULL,colSig="blue", areaPlot=F,...)
+{
+                bPlot=TRUE
+                if (areaPlot) bPlot=FALSE
+	spec<-spectrum(x,spans=spans,plot=bPlot, ...)
+
+                if (areaPlot) {
+                    par(yaxs="i")
+                    spec$spec<-spec$spec*spec$freq
+                    plot(spec$freq,spec$spec,type="l",log="x")
+                }
+
+
+
+	dof<-spec$df
+
+
+	lim<-qchisq(c(1-p/2,p/2),dof)/dof
+              	lines(spec$freq,spec$spec*lim[1],col=colSig,lty=2)
+        	lines(spec$freq,spec$spec/lim[1],col=colSig,lty=2)
+	#lines(spec$freq,meanspec*lim[2],col="blue")
+
+}

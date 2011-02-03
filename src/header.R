@@ -42,5 +42,8 @@ source(paste(path,'selspace.interp.R',sep=""))
 
 source(paste(path,'robust.R',sep=""))
 
-source(paste(path,'confspec.R',sep=""))
+source(paste(path,'confspec.R',sep=""))  #Includes spectral estimation + significance testing and conficence intervals
+
+source(paste(path,'shortcuts.R',sep=""))  #Includes shortcuts as first and last to access the first and last element of a vector
+
 

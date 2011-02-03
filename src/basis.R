@@ -16,8 +16,8 @@ addhistory<-function(x,newhist)
 
 #Coordinate conversion from 1D<->2D
 c1t2<-function(x,nLon)
-{ 
-      x<-x-1  
+{
+      x<-x-1
 	lat<-x%/%nLon+1
 	lon<-x%%nLon+1
 	return(list(lat=lat,lon=lon))
@@ -38,13 +38,13 @@ mergeattr <- function(data,source1,source2,newhistory='')
 	attr(result,'name')<-c(temp1$name,temp2$name)
 	attr(result,'history')<-c(temp1$history,paste(date(),newhistory))
 	return(result)
-	
+
 }
 
 
 copyattr <- function(data,source,newhistory='',cclass=TRUE)
 {
-	
+
 	temp<-attributes(source)
 	attr(data,'lat')<-temp$lat
 	attr(data,'lon')<-temp$lon
@@ -52,7 +52,7 @@ copyattr <- function(data,source,newhistory='',cclass=TRUE)
 	attr(data,'history')<-c(temp$history,paste(date(),newhistory))
 	if (cclass) class(data)<-class(source)
 	return(data)
-	
+
 }
 
 
@@ -106,7 +106,7 @@ prcompNA.pField <- function(data,nPc=2,center=TRUE,scale=TRUE, ...)
        sdsum<-sum(result$sdev)
   return(list(pc=pc,eof=eof,sdev=sdev,sdsum<-sdsum))
 
-  
+
     }
 
 #apply a function on fields containing complete NA sets...
@@ -117,7 +117,7 @@ na.apply<-function(x,FUN,... )
    return(x)
   }
 
- 
+
 
 getlat <- function(data) return(attr(data,"lat"))
 getlon <- function(data) return(attr(data,"lon"))
@@ -133,7 +133,7 @@ maxpoint <- function(data)
   value<-max(data)
   lat<-getlat(data)
   lon<-getlon(data)
-  
+
   pos2d<-c1t2(pos,length(lon))
   return(list(lat=lat[pos2d$lat],lon=lon[pos2d$lon],value=value))
   }
@@ -144,7 +144,7 @@ minpoint <- function(data)
   value<-min(data)
   lat<-getlat(data)
   lon<-getlon(data)
-  
+
   pos2d<-c1t2(pos,length(lon))
   return(list(lat=lat[pos2d$lat],lon=lon[pos2d$lon],value=value))
   }
@@ -152,7 +152,7 @@ minpoint <- function(data)
 #apply FUN(field->scalar) for each timestep and gives back a timeseries
 applyspace<-function(data,FUN)
 {
-     index<-!is.na(colSums(data)) 
+     index<-!is.na(colSums(data))
    ts<-apply(data[,index],1,FUN)
    return(pTs(ts,time(data),name=getname(data)))
        }
@@ -176,11 +176,11 @@ latlonField <- function(data)
 
   nlat<-length(lat)
   nlon<-length(lon)
-  
+
   lon2d<-rep(lon,nlat)
   lat2d<-rep(lat,each=nlon)
 
-  
+
   return(list(lat2d=lat2d,lon2d=lon2d))
 }
 
@@ -189,7 +189,7 @@ latlonField <- function(data)
 schwerpunkt<-function(data)
 {
 #nicht allgemien !
-      
+
       t<-latlonField(data)
       t$lon2d[t$lon2d>180]<- t$lon2d[t$lon2d>180]-360
       lat<-weighted.mean(t$lat2d,data)
@@ -198,23 +198,24 @@ schwerpunkt<-function(data)
       return(list(lat=lat,lon=lon))
 }
 
+#removed as it causes problems with newer R-versions (likely as cbind.ts is not there anymore)
 #combine timeseries
-cbind.pTs <- function(..., deparse.level = 1)
-  {
-    print("cbind.pTs")
-    result<-cbind.ts(..., deparse.level=deparse.level)
-    args <- list(...)
-    lat<-NULL
-    lon<-NULL
-    name<-NULL
-    for (a in args)
-      {
-        lat<-c(lat,getlat(a))
-        lon<-c(lon,getlon(a))
-        name<-c(name,getname(a))
-      }
-    return(pTs(result,time(result),lat,lon,name,"cbind"))
-  }
+#cbind.pTs <- function(..., deparse.level = 1)
+ # {
+  #  print("cbind.pTs")
+   # result<-cbind(..., deparse.level=deparse.level)
+   # args <- list(...)
+   # lat<-NULL
+   # lon<-NULL
+   # name<-NULL
+   # for (a in args)
+   #   {
+   #     lat<-c(lat,getlat(a))
+   #     lon<-c(lon,getlon(a))
+   #     name<-c(name,getname(a))
+   #   }
+   # return(pTs(result,time(result),lat,lon,name,"cbind"))
+ # }
 
 scale_space <- function(data)
 {
