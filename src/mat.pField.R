@@ -77,6 +77,42 @@ fastcor.pTs <- function(pTs,pField)
 return(pField(cor(pTs,pField),9999,getlat(pField),getlon(pField),paste("cor",getname(pTs),getname(pField)),gethistory(pField),date=FALSE))
 }
 
+
+
+#Correlaties pTs with pField or pTs with pTs... missing fields allowed
+cor.pTsM <- function(pTsS,pFieldS,debug=F)
+{
+	#bring both on the same time basis
+	start<-max(start(pTsS)[1],start(pFieldS)[1])
+	end<-min(end(pTsS)[1],end(pFieldS)[1])
+
+	if (debug) print(paste("Common time period: ",start,end))
+	pTsS<-window(pTsS,start,end)
+	pFieldS<-window(pFieldS,start,end)
+
+	if (class(pFieldS)[1]=="pField") #field correlation
+	{
+
+		class(pFieldS)<-"matrix"
+
+                                 nonmissing<-!is.na(pFieldS[,1])
+		#Filter out data with contain only missing values
+		dat<-pFieldS[nonmissing,]
+		result<-matrix(NA,1,ncol(pFieldS))
+
+		tresult<-cor(dat,c(pTsS)[nonmissing])
+		result[]<-tresult
+		class(pFieldS)<-"pField"
+		return(copyattr(result,pFieldS))
+	}
+	else return(cor(pTsS,pFieldS))
+}
+
+
+
+
+
+
 #Correlaties pTs with pField or pTs with pTs
 cor.pTs <- function(pTs,pField,debug=F)
 {
