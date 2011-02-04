@@ -1,24 +1,27 @@
 #scale each timeseries=point of the field
 
 #Here only the history gets modified by removing the last 1 / 2 entries and
-#added by Ops.pField and adding a new one... 
-scale.pField <- function(x, center = TRUE, scale = TRUE)
+#added by Ops.pField and adding a new one...
+
+scale.pField<-function(x, center = TRUE, scale = TRUE)
 {
-    result<-NextMethod()
-    hist<-attr(result,"history")
+
+    x[]<-scale(unclass(x),center=center,scale=scale)
+    hist<-attr(x,"history")
     hist<-hist[1:(length(hist)-sum(center,scale))]
     hist<-c(hist,paste(date(),"scale center=",center,"scale=",scale))
-    attr(result,"history")<-hist
-    return(result)
+    attr(x,"history")<-hist
+    return(x)
 }
 
-# 
+
+#
 scale.pTs <- function(x, center = TRUE, scale = TRUE)
 {
     hist<-gethistory(x)
     hist<-hist[1:(length(hist)-1)]
     result<-pTs(NextMethod(),time(x),getlat(x),getlon(x),getname(x),hist,date=FALSE)
-    hist<-c(hist,paste(date(),"scale center=",center,"scale=",scale)) 
+    hist<-c(hist,paste(date(),"scale center=",center,"scale=",scale))
     return(addhistory(result,hist))
 }
 
@@ -29,12 +32,15 @@ detrend <- function(x, ...) UseMethod("detrend")
 detrend.default <- function(x, ...) print("No default detrend function")
 
 
-
-detrend.pField<- function(x)
+detrend.pField<-function(x)
 {
-	x[]<-lm(unclass(x)~seq(nrow(x)))$residuals
+                 nonmissing<-!is.na(x[,1])
+	x[nonmissing,]<-lm(unclass(x)~seq(nrow(x)))$residuals
 	return(addhistory(x,"detrend"))
 }
+
+
+
 
 
 
@@ -50,7 +56,7 @@ detrend.pTs<- function(x)
 rollmean.pField <- function(x,k,na.pad = FALSE, ...)
 {
   x[]<-rollmean.default(x,k,na.pad=TRUE, ...)
-  if (na.pad==FALSE) return(addhistory(na.omit(x),paste("rollmean",k))) 
+  if (na.pad==FALSE) return(addhistory(na.omit(x),paste("rollmean",k)))
 	else return(addhistory(x,paste("rollmean",k)))
 
 }
@@ -59,7 +65,7 @@ rollmean.pField <- function(x,k,na.pad = FALSE, ...)
 rollmean.pTs <- function(x,k,na.pad = FALSE, ...)
 {
   x[]<-rollmean.default(x,k,na.pad=TRUE, ...)
-  if (na.pad==FALSE) return(addhistory(na.omit(x),paste("rollmean",k))) 
+  if (na.pad==FALSE) return(addhistory(na.omit(x),paste("rollmean",k)))
 	else return(addhistory(x,paste("rollmean",k)))
 
 }
@@ -89,7 +95,7 @@ cor.pTs <- function(pTs,pField,debug=F)
 		#Filter out data with contain only missing values
 		dat<-pField[,!is.na(colSums(pField))]
 		result<-matrix(NA,1,ncol(pField))
-	
+
 		tresult<-cor(dat,pTs)
 		result[,!is.na(colSums(pField))]<-tresult
 		class(pField)<-"pField"
@@ -123,9 +129,9 @@ return(copyattr(result,pField))
 
 
 
-mycor.test <- function(v1,v2, ...) 
+mycor.test <- function(v1,v2, ...)
 {
-	t<-cor.test(v1,v2, ...) 
+	t<-cor.test(v1,v2, ...)
 	return(c(t$estimate,t$p.value))
 }
 
@@ -143,12 +149,33 @@ prcompO.pTs <- function(data,nPc=2,center=TRUE,scale=TRUE, ...)
     }
 
 
-prcompO.pField <- function(data,nPc=10,center=TRUE,scale=TRUE, ...)
+#prcompO.pField <- function(data,nPc=10,center=TRUE,scale=TRUE, ...)
+#{
+ # temp<-attributes(data)
+ # class(data)<-"matrix"
+ # result<-prcomp(data,center=center,scale=scale)
+ # pc<-pTs(result$x[,1:nPc],time(data),9999,9999,paste("PC",1:nPc,temp$name),gethistory(#data),date=FALSE)
+ # pc<-addhistory(pc,"PRCOMP")
+ # eof<-pField(result$rotation[,1:nPc],1:nPc,temp$lat,temp$lon,paste("EOF",temp$name),g#ethistory(data),date=FALSE)
+ # eof<-addhistory(eof,"PRCOMP")
+ # var<-result$sdev[1:nPc]^2
+ # varsum<-sum(result$sdev^2)
+ # return(list(pc=pc,eof=eof,var=var,varsum=varsum))
+#}
+
+
+#Version of prcomp that can handle missing values (always complete fields)
+prcompO.pField<-function(data,nPc=10,center=TRUE,scale=TRUE, ...)
 {
   temp<-attributes(data)
   class(data)<-"matrix"
-  result<-prcomp(data,center=center,scale=scale)
-  pc<-pTs(result$x[,1:nPc],time(data),9999,9999,paste("PC",1:nPc,temp$name),gethistory(data),date=FALSE)
+  nonmissing<-!is.na(data[,1])
+
+  result<-prcomp(data[nonmissing,],center=center,scale=scale,na.action=na.omit)
+
+  pc<-pTs(NA,time(data),9999,9999,paste("PC",1:nPc,temp$name),gethistory(data),date=FALSE)
+  pc[nonmissing,]<-result$x[,1:nPc]
+
   pc<-addhistory(pc,"PRCOMP")
   eof<-pField(result$rotation[,1:nPc],1:nPc,temp$lat,temp$lon,paste("EOF",temp$name),gethistory(data),date=FALSE)
   eof<-addhistory(eof,"PRCOMP")
@@ -156,6 +183,7 @@ prcompO.pField <- function(data,nPc=10,center=TRUE,scale=TRUE, ...)
   varsum<-sum(result$sdev^2)
   return(list(pc=pc,eof=eof,var=var,varsum=varsum))
 }
+
 
 
 
@@ -186,30 +214,30 @@ composite.pTs <- function(ts,field,sign=FALSE,pval=TRUE,sp=sd(ts),sm=(-1*sp))
 	}
 	else
 	{
-		
-		
+
+
 		index.plus <- ts>sp
 		index.minus <- ts<sm
 	}
-	
+
 	field.plus<-field[index.plus,]
 	field.minus<-field[index.minus,]
 
-        
+
 	if (pval)
 	{
 	field.p.plus<-rep(NA,ncol(field))
 	for (i in 1:ncol(field)) field.p.plus[i]<-t.test(field.plus[,i])$p.value
-	
+
 
         field.p.minus<-rep(NA,ncol(field))
 	for (i in 1:ncol(field)) field.p.minus[i]<-t.test(field.minus[,i])$p.value
 
- 	
+
       field.p.symetrie<-rep(NA,ncol(field))
-	for (i in 1:ncol(field)) field.p.symetrie[i]<-t.test(-1*field.minus[,i],field.plus[,i])$p.value	
+	for (i in 1:ncol(field)) field.p.symetrie[i]<-t.test(-1*field.minus[,i],field.plus[,i])$p.value
          }
-        
+
 
         field.plus<-pField(colMeans(field.plus),9999,temp$lat,temp$lon,paste("+ Compos.",getname(ts),temp$name),temp$history,date=FALSE)
 	field.minus<-pField(colMeans(field.minus),9999,temp$lat,temp$lon,paste("- Compos.",getname(ts),temp$name),temp$history,date=FALSE)
@@ -217,9 +245,9 @@ composite.pTs <- function(ts,field,sign=FALSE,pval=TRUE,sp=sd(ts),sm=(-1*sp))
         field.p.plus<-pField(field.p.plus,9999,temp$lat,temp$lon,paste("P Compos.+",getname(ts),temp$name),temp$history,date=FALSE)
 	field.p.minus<-pField(field.p.minus,9999,temp$lat,temp$lon,paste("P Compos.-",getname(ts),temp$name),temp$history,date=FALSE)
 	field.p.symetrie<-pField(field.p.symetrie,9999,temp$lat,temp$lon,paste("P Compos.-",getname(ts),temp$name),temp$history,date=FALSE)
-	
+
 	return(list(plus=field.plus,minus=field.minus,p.plus=field.p.plus,p.minus=field.p.minus,p.symetrie=field.p.symetrie))
-	
+
 
 }
 
@@ -235,7 +263,7 @@ pcor <- function(data,p1,p2,t1,t2)
 
 sigcor <- function(ts,data,p=0.05)
 {
-	
+
 	x<-cortest.pTs(ts,data)
 	result<-x[1,]
 	result[x[2,]>p]<-NA
@@ -247,7 +275,7 @@ sigcor <- function(ts,data,p=0.05)
 ccf.pTs <- function(ts,field)
 {
 	result<-pField(NULL,9999,getlat(field),getlon(field),"CCF ANTICOR LAG")
-	for (i in 1:ncol(field)) 
+	for (i in 1:ncol(field))
 		result[i]<-myccf(field[,i],ts)
 	return(result)
 }
@@ -287,6 +315,39 @@ t<-qt(p/2,df,lower.tail=F)
 r<-(0:999)/1000
 return(r[which.min(abs(t-r*sqrt(df)/sqrt(1-r^2)))])
 }
+
+
+
+
+#Correlaties pTs with pField or pTs with pTs
+lmSlope.pTs <- function(pTsS,pFieldS,debug=F)
+{
+	#bring both on the same time basis
+	start<-max(start(pTsS)[1],start(pFieldS)[1])
+	end<-min(end(pTsS)[1],end(pFieldS)[1])
+
+	if (debug) print(paste("Common time period: ",start,end))
+	pTsS<-window(pTsS,start,end)
+	pFieldS<-window(pFieldS,start,end)
+
+	if (class(pFieldS)[1]=="pField") #field correlation
+	{
+
+		class(pFieldS)<-"matrix"
+
+                                 nonmissing<-!is.na(pFieldS[,1])
+		#Filter out data with contain only missing values
+		dat<-pFieldS[nonmissing,]
+		result<-matrix(NA,1,ncol(pFieldS))
+
+		tresult<-lm(dat~c(pTsS)[nonmissing])$coeff[2,]
+		result[]<-tresult
+		class(pFieldS)<-"pField"
+		return(copyattr(result,pFieldS))
+	}
+	else return(lm(pTsS~pFieldS)[2])
+}
+
 
 
 

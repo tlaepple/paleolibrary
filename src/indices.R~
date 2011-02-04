@@ -1,6 +1,6 @@
 #climate indices (17.August.06, tlaepple@awi-bremerhaven.de)
 #input time series field (pField)
-#output time series (pTs) 
+#output time series (pTs)
 
 #NINO3 in SST (K) anomalies
 index.nino3 <- function(sst)
@@ -57,15 +57,17 @@ index.nino.tni<-function(sst)
 
 
 #NAO Index EOF-based
-index.nao<-function(slp,plot=FALSE,pattern=FALSE)
+index.nao<-function(slp,plot=FALSE,pattern=FALSE,scale=FALSE)
 {
-	slpdata.naoregion<-selspace(slp,lon1=270,lon2=40,lat1=20,lat2=80) #select atlantic region
-	result<-prcompO.pField(scale(detrend(slpdata.naoregion)))
+	slpdata.naoregion<-selspace(slp,lon1=360-90,lon2=40,lat1=20,lat2=70) #select atlantic region
+	result<-prcompO.pField(scale(detrend(slpdata.naoregion),scale=scale))
 	if (selspace(result$eof[1,],lat1=35.2,lon1=340.2) < 0)
 		{
 			warning("Sign of NAO was adapted to get a positive EOF over the Azores")
 			result$pc[,1]<-result$pc[,1]*(-1)
 		}
+
+
 	if (plot) plot(result$eof[1,],"NAO / EOF1")
 	attr(result$pc,"name")<-paste("NAO index/PC1",getname(slp))
 	if (pattern) return(list(ts=scale(result$pc[,1]),pattern=result$eof[1,]))
@@ -76,10 +78,8 @@ index.nao<-function(slp,plot=FALSE,pattern=FALSE)
 #original Tahiti-Darwin
 index.soi <- function(slp)
 {
-  tahiti<-selspace(slp,lat1=(-17),lon1=(360-149))
-  #tahiti<-selspace(slp,lat1=(-17),lon1=(360-149))
-
-  darwin<-selspace(slp,lat1=(-12),lon1=(0+131))
+  tahiti<-selspace(slp,lat1=(-18),lon1=(360-150))
+  darwin<-selspace(slp,lat1=(-13),lon1=(0+131))
 
   result<-scale(tahiti)-scale(darwin)
   attr(result,"name")<-paste("SOI index",getname(slp))
@@ -110,7 +110,7 @@ index.ao <- function(slp)
 			warning("Sign of AO was adapted to get a positive EOF over the Azores")
 			result$pc[,1]<-result$pc[,1]*(-1)
 		}
-	
+
 	result<-result$pc[,1]
 	attr(result,"name")<-paste("AO index/PC1",getname(slp))
 	return(result)
@@ -129,7 +129,7 @@ index.pna <- function(gph)
    p3 <-selspace(gph,lat1=(55),lon1=(360-115))
    p4 <-selspace(gph,lat1=(30),lon1=(360-85))
 
- 
+
   result<-0.25*(scale(p1)-scale(p2)+scale(p3)-scale(p4))
   attr(result,"name")<-paste("PNA index",getname(gph))
   return(result)

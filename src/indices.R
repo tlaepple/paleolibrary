@@ -16,8 +16,10 @@ index.nino3 <- function(sst)
 index.nino3.4 <- function(sst)
 {
   data<-selspace(sst,lon1=360-170,lon2=360-120,lat1=-5,lat2=5)
-  result<-applyspace(scale(data,scale=FALSE),mean)
-  attr(result,"name")<-paste("NINO 3.4 index",getname(sst))
+  notmissing<-!is.na(data[,1])
+  result<-pTs(NA,time(sst),0,0,paste("NINO 3.4 index",getname(sst)))
+  result[]<-rowMeans(scale.pField(data,scale=FALSE))
+
   return(result)
 
 }
@@ -55,20 +57,26 @@ index.nino.tni<-function(sst)
 
 }
 
+#scale.pTs oder detrend verliert die Zeitinformation!
 
 #NAO Index EOF-based
-index.nao<-function(slp,plot=FALSE,pattern=FALSE,scale=TRUE)
+index.nao<-function(slp,plot=FALSE,pattern=FALSE,scale=FALSE)
 {
-	slpdata.naoregion<-selspace(slp,lon1=270,lon2=40,lat1=20,lat2=80) #select atlantic region
-	result<-prcompO.pField(scale(detrend(slpdata.naoregion),scale=scale))
+
+	slpdata.naoregion<-selspace(slp,lon1=360-90,lon2=40,lat1=20,lat2=70) #select atlantic region
+	result<-prcompO.pField(scale.pField(detrend(slpdata.naoregion),scale=scale))
+
 	if (selspace(result$eof[1,],lat1=35.2,lon1=340.2) < 0)
 		{
 			warning("Sign of NAO was adapted to get a positive EOF over the Azores")
 			result$pc[,1]<-result$pc[,1]*(-1)
 		}
+
+                fpattern<-lmSlope.pTs(scale(result$pc[,1]),slp)
+
 	if (plot) plot(result$eof[1,],"NAO / EOF1")
 	attr(result$pc,"name")<-paste("NAO index/PC1",getname(slp))
-	if (pattern) return(list(ts=scale(result$pc[,1]),pattern=result$eof[1,]))
+	if (pattern) return(list(ts=scale(result$pc[,1]),pattern=fpattern,fvar=result$var[1]/result$varsum))
 			else return(scale(result$pc[,1]))
 
 }
