@@ -102,6 +102,22 @@ fx<-fft(rnorm(N));
 }
 
 
+#Simulate a timeseries with a powerlaw and slope beta
+sim.powerlaw<-function(beta,N)
+{
+    Norg<-N
+    N<-ceiling(N/2)*2
+    df  = 1/(N);
+    f=seq(from=df,to=1/(2),by=df)
+    Filter=sqrt(1/(f^beta));
+    Filter = c(max(Filter), Filter,rev(Filter))
+  #  Filter = c(Filter,rev(Filter))
+    x   = scale(rnorm(N+1,1))  ### Check why N+1
+    fx  =fft(x)
+    ffx =fx*Filter;
+    result<-scale(Re(fft(ffx,inverse=TRUE)))
+    return(result[1:Norg])
+}
 
 
 ### Testcode for the AR1 processes
@@ -123,3 +139,11 @@ fx<-fft(rnorm(N));
 
 
 
+
+gamma.muv<-function(n,mu,v)
+{
+#generate n Gamma distributed random numbers with mean mu and Variance v
+    scale<-v/mu
+    shape<-mu/scale
+    return(rgamma(n=n,shape=shape,scale=scale))
+}

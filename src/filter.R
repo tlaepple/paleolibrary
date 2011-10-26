@@ -1,5 +1,5 @@
 #Implementation of standard finite response filters, e.g. Bloomfield 1976, linear filtering
-# 
+#
 #Derives and plots the transfer function (given a filter)
 get.transfer<-function(g.u,resolution=100,plot=T,add=F, ...)
 {
@@ -11,7 +11,7 @@ omega=(1:resolution)*pi/resolution
 yt<-rep(0,length(omega))
 
 for (u in (-1*n.side):n.side)
-	yt<-yt+(g.u[u+n.side+1]*exp(-1*1i*omega*u)) 
+	yt<-yt+(g.u[u+n.side+1]*exp(-1*1i*omega*u))
 
 if (plot) {
 	if (!add) plot(omega/2/pi,abs(yt)^2,type="l",xlab="omega",main="Transfer function", ...)
@@ -45,8 +45,8 @@ if (convergence)
 	#Multiply by convergence factors to reduce the ripples
 	delta<-4*pi/n
 	for (u in c((-1*n.side):-1,1:n.side)) g.u[u+n.side+1]<- g.u[u+n.side+1]*sin(u*delta/2)/(u*delta/2)
-}	
-	
+}
+
 	return(g.u)
 }
 
@@ -66,7 +66,7 @@ bandpass<-function(omega.upper,omega.lower,n=9,sample=1,convergence=T)
 {
 if ((n %% 2) == 0) stop("N must be odd, this function calculates only symetrical = phase preserving filters")
 
-	
+
 	return(lowpass(omega.upper,n,sample,convergence)-lowpass(omega.lower,n,sample,convergence))
 }
 
@@ -83,14 +83,14 @@ filter.pTs <- function(data,filter,...)
 #co nstraints in a simple manner in the time domain as
 #follows: To approximate the ‘minimum norm’ constraint,
 #one pads the series with the long-term mean beyond the
-#boundaries (up to at least one filter width) prior to smoothing. 
-#To approximate the ‘minimum slope’ constraint, onepads the series 
+#boundaries (up to at least one filter width) prior to smoothing.
+#To approximate the ‘minimum slope’ constraint, onepads the series
 #with the values within one filter width of theboundary reflected about the time boundary.
 #This leads thesmooth towards zero slope as it approaches the boundary.
 #Finally, to appr oxima te the ‘ minimum r oughness’ constraint,
-# one pads the series with the values within one filterwidth of the boundary 
-#reflected abou t the time boundary,and reflected vertically (i.e., about the ‘‘y’’ axis) 
-#relativ e tothe final value. This tends to impose a point of inflection atthe boundary, 
+# one pads the series with the values within one filterwidth of the boundary
+#reflected abou t the time boundary,and reflected vertically (i.e., about the ‘‘y’’ axis)
+#relativ e tothe final value. This tends to impose a point of inflection atthe boundary,
 #and leads the smooth towards the boundarywith constant slope.
 
 #Here write the filter with the modified boundary conditions
@@ -118,13 +118,13 @@ N<-floor(length(filter)/2)
 
 
 	}
-	
+
 	result<-filter(c(before,data,after),filter,circular=F)[(N+1):(N+length(data))]
 	return(pTs(result,time(data),getlat(data),getlon(data),paste(getname(data),"filtered"),gethistory(data)))
 }
 
 
-SSA2 <- function(ts,L,I=1,plot=F) 
+SSA2 <- function(ts,L,I=1,plot=F)
 {
 x1<-na.omit(as.vector(ts))
 #create the trajectory matrix
@@ -143,15 +143,15 @@ sev<-sum(ev$values)
 V<-t(X)%*%U
 rc<-U%*%t(V)
 
-Vt<-as.matrix(t(V)) 
-rca<-as.matrix(U[,I])%*%Vt[I,] 
+Vt<-as.matrix(t(V))
+rca<-as.matrix(U[,I])%*%Vt[I,]
 y<-rep(0,N)
-Lp<-min(L,K) 
+Lp<-min(L,K)
 Kp<-max(L,K)
 for (k in (0:(Lp-2)) )
 {
 	 for (m in (1:(k+1)) ) y[k+1]<-y[k+1]+(1/(k+1))*rca[m,(k-m+2)]
-} 
+}
 for (k in ((Lp-1):(Kp-1)) )
 {
 	for (m in (1:Lp))  y[k+1]<-y[k+1]+(1/(Lp))*rca[m,(k-m+2)];
@@ -170,3 +170,31 @@ invisible(ts_result)
 
 
 
+
+
+### Highpass
+#Wir geben eine Frequenz an... wir wollen ca. eine Periode von 10 Jahren durchlassen
+#10 Jahre = 1.4m
+#Loest sich je nach Frequenzbereich auf !
+
+sm.highpass<-function(ts,cutoff=1/2,n=1001,method=2)
+{
+	f.high<-highpass(cutoff,n=n,sample=1/(diff(time(ts))[1]))  #Frequenz in Metern
+	fast<-filter.pTs1(ts,f.high,method=method)
+	slow<-ts-fast
+	return(list(fast=fast,slow=slow))
+}
+
+### Spline Fit
+#Input: timeseries ts1 (pTs object)
+#df = Degrees of freedom of the spline; (smaller number = stiffer spline = more smoothing)
+
+#Output: fit = spline fit, residuals = remaining fast part
+
+sm.spline<-function(ts1,df=15)
+{
+	result<-smooth.spline(time(ts1), c(ts1),df=df)
+	res<-pTs(c(ts1)-result$y,time(ts1),getlat(ts1),getlon(ts1),paste(getname(ts1),"Spline Res."),gethistory(ts1))
+	fit<-pTs(result$y,time(ts1),getlat(ts1),getlon(ts1),paste(getname(ts1),"Spline Fit."),gethistory(ts1))
+	return(list(residuals=res,fit=fit))
+}

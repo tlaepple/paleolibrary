@@ -1,0 +1,426 @@
+#ownfunctions.R
+#here you can put your own and/or updated functions
+
+addpoints<-function(lat,lon,value,pch=19,lwd=7,data=NULL,zlim=range(data,finite=TRUE),levels=pretty(zlim,nlevels),nlevels=20,palette=colorRampPalette(c("violetred4","blue","steelblue", "lightgreen","white", "yellow","orange","red","brown")))
+{
+	#if (is.null(levels)) stop("Levels of the plot are required")
+
+	# First expand the levels to a higher resolution (here 10 sublevels for each)
+	highres.levels<-(seq(levels)-1)*10+1
+	allcolors<-palette(highres.levels[length(highres.levels)]) #Get all the colors
+	colors<-allcolors[approx(levels,highres.levels,value)$y] #Get the colors of the points by linear interpolation
+	points(lon,lat,col=colors,pch=pch,lwd=lwd)
+}
+
+
+sb<-function(a,b,debug=FALSE)
+  {
+    Na<-length(time(a))
+    Nb<-length(time(b))
+    tStart<-max(time(a)[1],time(b)[1])
+    tEnd<-min(time(a)[Na],time(b)[Nb])
+    if (debug) print(paste("Start",tStart,"End",tEnd))
+    return(list(a=window(a,tStart,tEnd),b=window(b,tStart,tEnd)))
+  }
+
+
+#Not yet optimized for speed !
+areamean<-function(data)
+{
+        temp<-attributes(data)
+        nlon<-length(temp$lon)
+        nlat<-length(temp$lat)
+        ntime<-length(time(data))
+
+        data3D<-array(data,c(ntime,nlon,nlat)) #make a 2D array
+        weight<-t(matrix(cos(temp$lat/180*pi),nlat,nlon))
+        result<-vector()
+
+        for (i in 1:ntime) {
+                  index<-!is.na(data3D[i,,])
+			result[i]<-(sum(weight[index]*data3D[i,,][index])/sum(weight[index]))
+
+		}
+
+
+
+        return(pTs(result,time(data), sum(weight[index]),0,paste("areamean",getname(data))))
+       }
+
+
+
+
+cor.sb<-function(a,b)
+  {
+    t<-sb(a,b)
+    return(cor.test(t$a,t$b))
+  }
+
+applyspace<-function(data,FUN, ...)
+{
+     index<-!is.na(colSums(data))
+   ts<-apply(data[,index],1,FUN, ...)
+   return(pTs(ts,time(data),name=getname(data)))
+       }
+applytime<-function(data,FUN,newtime=NULL, ...)
+{
+   if (is.null(newtime)) newtime<-mean(time(data))
+   field<-apply(data,2,FUN, ...)
+   return(pField(field,newtime,getlat(data),getlon(data),name=getname(data)))
+}
+composite <-function(ts,field,sign=FALSE,sp=sd(ts),sm=(-1*sp),anomaly=T)
+{
+        temp<-attributes(field)
+     if (anomaly) field<-scale(field,scale=FALSE)
+        ts<-scale(ts)
+#bring both on the same time basis
+        start<-max(start(ts)[1],start(field)[1])
+        end<-min(end(ts)[1],end(field)[1])
+        print(paste("Common time period: ",start,end))
+        ts<-window(ts,start,end)
+        field<-unclass(window(field,start,end))
+
+        ts[is.na(ts)]<-0
+        if (sign)
+        {
+                index.plus<-ts>0
+                index.minus<-ts<0
+        }
+        else
+        {
+
+
+                index.plus <- ts>sp
+                index.minus <- ts<sm
+        }
+
+        field.plus<-field[index.plus,]
+        field.minus<-field[index.minus,]
+
+        field.plus<-pField(colMeans(field.plus),9999,temp$lat,temp$lon,paste("+ Compos.",getname(ts),temp$name),temp$history,date=FALSE)
+        field.minus<-pField(colMeans(field.minus),9999,temp$lat,temp$lon,paste("- Compos.",getname(ts),temp$name),temp$history,date=FALSE)
+
+        return(list(plus=field.plus,minus=field.minus))
+
+
+}
+
+
+
+plotmap.square <- function(plotdata,main=NULL,zlim=range(plotdata,finite=TRUE),levels=pretty(zlim,nlevels),nlevels=20,palette=rbow,FUN=NULL,stype=2,sSub="",legend=TRUE, ...)
+{
+if (stype == 2) {
+
+
+				palette=colorRampPalette(c("violetred4","blue","steelblue", "lightgreen","white", "yellow","orange","red","brown"))
+
+
+}
+
+
+	temp<-attributes(plotdata)
+
+	if (is.null(main)) main<-temp$name
+        tmp<-plot.preparation(plotdata)
+	plotsquare(tmp$lon,tmp$lat,tmp$data,zlim=zlim,nlevels=nlevels,levels=levels,color=palette,plot.title={
+        title(main=main,sub=sSub);
+        if (!is.null(FUN)) FUN(tmp$lon,tmp$lat,tmp$data)
+        addland(col="black");
+        grid()},legend=legend, ...)
+      }
+
+plotsquare<-function (x = seq(0, 1, len = nrow(z)), y = seq(0, 1, len = ncol(z)),
+    z, xlim = range(x, finite = TRUE), ylim = range(y, finite = TRUE),
+    zlim = range(z, finite = TRUE), levels = pretty(zlim, nlevels),
+    nlevels = 20, color.palette = cm.colors, col = color.palette(length(levels) -
+        1), plot.title, plot.axes, key.title, key.axes, asp = NA,
+    xaxs = "i", yaxs = "i", las = 1, axes = TRUE, frame.plot = axes,legend=TRUE,
+    ...)
+{
+    if (missing(z)) {
+        if (!missing(x)) {
+            if (is.list(x)) {
+                z <- x$z
+                y <- x$y
+                x <- x$x
+            }
+            else {
+                z <- x
+                x <- seq(0, 1, len = nrow(z))
+            }
+        }
+        else stop("no 'z' matrix specified")
+    }
+    else if (is.list(x)) {
+        y <- x$y
+        x <- x$x
+    }
+    if (any(diff(x) <= 0) || any(diff(y) <= 0))
+        stop("increasing 'x' and 'y' values expected")
+ if (legend)
+     {mar.orig <- (par.orig <- par(c("mar", "las", "mfrow")))$mar
+    on.exit(par(par.orig))
+    w <- (3 + mar.orig[2]) * par("csi") * 2.54
+    layout(matrix(c(2, 1), nc = 2), widths = c(1, lcm(w)))
+    par(las = las)
+    mar <- mar.orig
+    mar[4] <- mar[2]
+    mar[2] <- 1
+    par(mar = mar)
+    plot.new()
+    plot.window(xlim = c(0, 1), ylim = range(levels), xaxs = "i",
+        yaxs = "i")
+    rect(0, levels[-length(levels)], 1, levels[-1], col = col)
+
+    if (missing(key.axes)) {
+        if (axes)
+            axis(4)
+    }
+    else key.axes
+    box()
+    if (!missing(key.title))
+        key.title
+    mar <- mar.orig
+    mar[4] <- 1
+    par(mar = mar)
+}
+    #plot.new()
+    #plot.window(xlim, ylim, "", xaxs = xaxs, yaxs = yaxs, asp = asp)
+    image(x,y,z,col=col,zlim=zlim,xlab="",ylab="")
+    if (missing(plot.axes)) {
+        if (axes) {
+            title(main = "", xlab = "", ylab = "")
+            axis(1)
+            axis(2)
+        }
+    }
+    else plot.axes
+    if (frame.plot)
+        box()
+    if (missing(plot.title))
+        title(...)
+    else plot.title
+    invisible()
+}
+
+#RMSE without any error checking
+rmse<-function(data1,data2)
+{
+	sqrt(mean((data1-data2)^2))
+}
+
+cbind.pTs<-function(...,deparse.level = 1)
+  {
+
+     result<-cbind(...,deparse.level = 1)
+    args <- list(...)
+    lat<-NULL
+    lon<-NULL
+    name<-NULL
+    for (a in args)
+      {
+        lat<-c(lat,getlat(a))
+        lon<-c(lon,getlon(a))
+        name<-c(name,getname(a))
+	  time<-time(a)
+      }
+    return(pTs(result,time,lat,lon,name,"cbind"))
+  }
+
+
+#Wind plotting routines
+
+
+#This is just a definition of a function to plot vectorplots, you do not have to understand it...
+par.uin<-function()
+  # determine scale of inches/userunits in x and y
+  # from http://tolstoy.newcastle.edu.au/R/help/01c/2714.html
+  # Brian Ripley Tue 20 Nov 2001 - 20:13:52 EST
+ {
+    u <- par("usr")
+    p <- par("pin")
+    c(p[1]/(u[2] - u[1]), p[2]/(u[4] - u[3]))
+ }
+
+quiver<-function(lon,lat,u,v,scale=1,length=0.2,maxv=max(abs(na.omit(u)),abs(na.omit(v))), ...)
+ # first stab at matlab's quiver in R
+ # from http://tolstoy.newcastle.edu.au/R/help/01c/2711.html
+ # Robin Hankin Tue 20 Nov 2001 - 13:10:28 EST
+  {
+    ypos <- lat[col(u)]
+    xpos <- lon[row(u)]
+
+    speed <- sqrt(u*u+v*v)
+
+    u <- u*scale/maxv
+    v <- v*scale/maxv
+
+
+   # matplot(xpos,ypos,type="p",cex=0,xlab="lon",ylab="lat", ...)
+    arrows(xpos,ypos,xpos+c(u),ypos+c(v),length=length*min(par.uin()))
+
+  }
+
+
+addwind<-function(dataU,dataV,shift=F)
+{
+	tmpV<-plot.preparation(dataV,shift)
+	tmpU<-plot.preparation(dataU,shift)
+
+	quiver(tmpV$lon,tmpU$lat,tmpU$data,tmpV$data,length=2,scale=10)
+	quiver(tmpV$lon+360,tmpU$lat,tmpU$data,tmpV$data,length=1,scale=10)
+	quiver(tmpV$lon-360,tmpU$lat,tmpU$data,tmpV$data,length=1,scale=10)
+
+
+
+
+}
+
+
+
+
+
+#plot(selspace(wind.pi.mean.u10,lat1=30,lat2=90,lon1=250,lon2=30),FUN=addwind(wind.pi.mean.u10,wind.pi.mean.v10))
+#newFig()
+#plot(selspace(wind.lgm.mean.u10,lat1=30,lat2=90,lon1=250,lon2=30),FUN=addwind(wind.lgm.mean.u10,wind.lgm.mean.v10))
+
+
+find.var<-function(data.nc,searched_vars)
+{
+   for (i in 1:length(data.nc$var))
+   {
+       for (j in 1:length(data.nc$var[[i]]$dim))
+       {
+           if(is.element(data.nc$var[[i]]$dim[[j]]$name,searched_vars)){
+               varname<-data.nc$var[[i]]$dim[[j]]$name
+               return(c(varname,i,j))
+           }
+       }
+   }    }
+
+
+julday.own<-function(x)
+{
+   year<-floor(x/10000)
+   month<-floor((x-year*10000)/100)
+   day<-x-(year*10000+month*100)
+
+   return(julday(month,day,year))
+}
+
+
+
+
+read_dailyinsol<-function(FILENAME="c:/g77/t.dat")
+{
+	data<-read.table(FILENAME,sep="",header=F)
+	insol<-data[,3]
+	dim(insol)<-c(365,361)
+	return(insol)
+}
+
+
+getilat<-function(lat) return((lat+90)*2+1)
+
+
+ploteof<-function(pcomp,ts,i=1,minLat=NULL,maxLat=NULL,minLon=NULL,maxLon=NULL,plotname=F)
+{
+
+ if (is.null(c(minLat,maxLat,minLon,maxLon)))
+ {
+        minLat<-min(getlat(ts))
+        maxLat<-max(getlat(ts))
+        extraLat<-(maxLat-minLat)/8
+        minLat<-minLat-extraLat
+        maxLat<-maxLat+extraLat
+
+        minLon<-min(getlon(ts))
+        maxLon<-max(getlon(ts))
+
+        extraLon<-(maxLon-minLon)/8
+        minLon<-minLon-extraLon
+        maxLon<-maxLon+extraLon
+ }
+
+        #Give colors to the points
+        a<-vector()
+        a[pcomp$eof[,i]>0]<-"red"
+        a[pcomp$eof[,i]<0]<-"blue"
+        titlevar<-sprintf("%2.1f",pcomp$var[i]/pcomp$varsum*100)
+        title=paste("EOF ",i,"  Expl.Var:",titlevar,"%",  sep="")
+        plot(getlon(ts),getlat(ts),ylim=c(minLat,maxLat),xlim=c(minLon,maxLon),lwd=4,xlab="EAST",ylab="NORTH",col=a,main=title)
+        text(getlon(ts),getlat(ts),sprintf("%1.2f",pcomp$eof[,i]),pos=1,offset=c(1,1))
+
+        if (plotname) text(getlon(ts),getlat(ts),getname(ts),pos=3,offset=c(1,1))
+
+        addland(col="black")
+        grid()
+
+}
+
+
+
+
+# Eingabe: Die zwei Datenreihen x1 und x2, Optional xlim = x-Grenzen, Farben etc... mit x1.at und x2.at kann man die Positionen der labels verändern,
+# Zeroline=TRUE zeichnet Nullline, xlab, ylab den Text der Achsenbeschriftung. Die zweite y-Achse kann im Moment nicht beschriftet werden
+
+#derived from Doppelplot
+splot<-function(x1,x2,xlim=NULL,col1="blue",col2="red",zeroline=FALSE,xlab="",lwd=2,iAxis=0,scale2=1,expand=1,ylab="",ylab2="",x1.at=NULL,x2.at=NULL,main="",line2=NULL,padj=2.5)
+{
+x1.s<-scale(x1)
+x2.s<-scale(x2)*scale2
+
+yrange=range(x1.s,x2.s)
+plot.ts(x1.s,xlim=xlim,axes=F,main=main,xlab=xlab,ylab="",col=col1,ylim=yrange*expand,lwd=lwd)
+lines(x2.s,xlim=xlim,xlab="",ylab="",col=col2,lwd=lwd)
+mtext(ylab2,side=4,col=col2,padj=padj)
+mtext(ylab,side=2,col=col1,padj=-1*padj)
+
+
+if (is.null(x1.at)) x1.at<- pretty(range(x1))
+if (is.null(x2.at)) x2.at<- pretty(range(x2))
+
+if (zeroline) abline(h=(0-attr(x2.s,"scaled:center"))/attr(x2.s,"scaled:scale")*scale2,lty=2,col="red")
+
+if (!is.null(line2)) abline(h=(line2-attr(x2.s,"scaled:center"))/attr(x2.s,"scaled:scale")*scale2,lty=2,col="red")
+
+
+axis(1)
+axis(2,at=(x1.at-attr(x1.s,"scaled:center"))/attr(x1.s,"scaled:scale"),labels=paste(x1.at),col=col1,col.ticks=col1)
+axis(4,at=(x2.at-attr(x2.s,"scaled:center"))/attr(x2.s,"scaled:scale")*scale2,labels=paste(x2.at),col=col2,col.ticks=col2)
+box()
+
+}
+
+
+
+
+
+#Eingabe: N = Anzahl der Zeitpunkte
+#filt = Filter den du zum glätten verwendest
+#pval = gewünschter p-Wert z.B. 0.05
+#one_sided: = TRUE, es wird nur auf Korrelation>  0 getestet, = FALSE auf
+#<  0 oder>  0
+
+critval.cor<-function(N,filt,pval=0.05,one_sided=FALSE,N.R=5000)
+{
+	savecor<-vector()
+	for (i in 1:N.R)
+	{
+		ts1<-rnorm(N)
+		ts2<-rnorm(N)
+		ts1.f<-na.omit(filter(ts1,filt))
+		ts2.f<-na.omit(filter(ts2,filt))
+		savecor[i]<-cor(c(ts1.f),c(ts2.f))
+	}
+if (one_sided) sig_interval <- 1-pval else sig_interval=1-pval/2
+result<-quantile(savecor,sig_interval)
+
+if (one_sided) return(result) else return(c(-1*result,result))
+}
+
+
+
+
+#discrete version of runif
+drunif<-function(n,min=0,max=1) return(floor(runif(n=n,min=min,max=max+1)))

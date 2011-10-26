@@ -107,6 +107,15 @@ return(list(Fsw=Fsw,ecc=ecc,obliquity=obliquity,long_perh=long_perh,lambda=lambd
 }
 
 
+
+annual_insolation<-function(kyear,lat)
+{
+    result<-vector()
+    for (i in 1:length(kyear)) result[i]<-mean(daily_insolation(kyear[i],lat,1:365)$Fsw)
+    return(result)
+}
+
+
 daily_insolation<-function(kyear,lat,day,day_type=1,fast=T)
 {
 # Usage:
@@ -193,7 +202,17 @@ if (day_type ==1) # calendar days
     lambda<-lambda_m+(2*ecc-1/4*ecc^3)*sin(lambda_m-omega)+(5/4)*ecc^2*sin(2*(lambda_m-omega))+(13/12)*ecc^3*sin(3*(lambda_m-omega))
 } else if (day_type==2) #solar longitude (1-360)
     {lambda=day*2*pi/360 # lambda=0 for spring equinox
-} else stop('Error: invalid day_type')
+} else if (day_type==3)
+{
+        # estimate lambda from calendar day using an approximation from Berger 1978 section 3
+    delta_lambda_m <- (day-355)*2*pi/365.2422; #linear mit 0 bei Tag 80
+    beta<-(1-ecc^2)^(1/2)
+    lambda_m0<-(-2)*( (1/2*ecc+1/8*ecc^3)*(1+beta)*sin(-omega)-1/4*ecc^2*(1/2+beta)*sin(-2*omega)+1/8*ecc^3*(1/3+beta)*(sin(-3*omega)))
+
+    lambda_m<-lambda_m0+delta_lambda_m+1.5*pi
+    lambda<-lambda_m+(2*ecc-1/4*ecc^3)*sin(lambda_m-omega)+(5/4)*ecc^2*sin(2*(lambda_m-omega))+(13/12)*ecc^3*sin(3*(lambda_m-omega))
+
+}else stop('Error: invalid day_type')
 
 So<-1365 # solar constant (W/m^2)
 delta<-asin(sin(epsilon)*sin(lambda)) # declination of the sun
@@ -332,7 +351,6 @@ ins.dec21.param<-function(ecc,obliquity,long_perh,LAT)
 	r<-tlag(r$Fsw,shift)
 	return(r)
 }
-
 
 
 

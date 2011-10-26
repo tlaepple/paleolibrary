@@ -1,63 +1,17 @@
-#Universal reading function for netcdf files
-#Update to read files only containing one single file
-#if bClim = TRUE than it expects 12 values and gives them the months 1...12
-read_data<-function(FILENAME="",varname=NULL,name="",lonname=NULL,latname=NULL,missVal=c(-1e+20,1e+20),bClim=FALSE)
- {
-    temp.nc = open.ncdf(FILENAME)
+### The following functions all belong to read_data...
+### unit.X convert the timesteps dependent on the units given
+### They are called from getTimeAxes, which is called by the main function read_data
 
-    # read varname from temp.nc
-    if(is.null(varname)){
-        if(temp.nc$nvars>1){
-            varnames<-c()
-            for (i in 1:length(temp.nc$var)){
-                    varnames<-c(varnames,temp.nc$var[[i]]$name)
-            }
-        print("following varnames are given:")
-        for (i in 1:length(varnames)){print(varnames[i])}
-   stop("you have to specify varname")
-        }
-        varname<-temp.nc$var[[1]]$name
-    }
-       # read name for lon and lat variabels from temp.nc
-    if(is.null(lonname)){
-        lonnames<-c("lon","longitude") # list of known lonnames
-        lonname<-find.var(temp.nc,lonnames)[1]
-    }
-    if(is.null(latname)){
-        latnames<-c("lat","latitude")     # list of known latnames
-        latname<-find.var(temp.nc,latnames)[1]
-    }
+### This is the first approach of splitting and cleaning up the "univeral reading function"
+### There is still lots of work to be done
 
-
-    #Read out the data
-    temp.time <- get.var.ncdf(temp.nc,"time")
-    temp.data <-get.var.ncdf(temp.nc,varname)
-    temp.lat <-get.var.ncdf(temp.nc,latname)
-    temp.lon <-get.var.ncdf(temp.nc,lonname)
-       #convert from missVal given values to NA
-    temp.data[temp.data<=missVal[1]]<-NA
-    temp.data[temp.data>=missVal[2]]<-NA
-
-    if (bClim & (length(temp.time))!=12) stop("bClim was choosen but != 12 timesteps in the dataset")
-
-
-    if (length(temp.time)>1)
-      {
-
-          if (!bClim)
-          {
-        ##convert dates for yearly and monthly data
-        # get informations about "time"-variable
-        timevar<-as.numeric(find.var(temp.nc,"time")[2:3])
-        unit.time<-temp.nc$var[[timevar[1]]]$dim[[timevar[2]]]$units
-        diff.time<-max(diff(temp.nc$var[[timevar[1]]]$dim[[timevar[2]]]$vals))
-                                        #diff.time<-temp.nc$var[[timevar[1]]]$dim[[timevar[2]]]$vals[[2]]-temp.nc$var[[timevar[1]]]$dim[[timevar[2]]]$vals[[1]]
-
-        if(unit.time=="day as %Y%m%d.%f"){
-          if(diff.time<10000){
+unit.1<-function(diff.time,temp.time,temp.nc,timevar,unit.time)    #day as %Y%m%d.%f
+{
+    if(diff.time<10000){
             year <- floor(temp.time/10000)
             temp.date <- year + (floor((temp.time-(year*10000))/100)-1)/12
-          }else{  #1000 or multiples are interpreted as years
+          }else
+{  #1000 or multiples are interpreted as years
             if((min(diff(temp.nc$var[[timevar[1]]]$dim[[timevar[2]]]$vals)) == diff.time))
             {
               temp.date<-temp.time%/%10000
@@ -70,61 +24,192 @@ read_data<-function(FILENAME="",varname=NULL,name="",lonname=NULL,latname=NULL,m
                 d.day[d.day>(len-1)]<-d.day[d.day>(len-1)]-len
                 temp.date<-d.year+d.day/365
               }else{stop("time steps are not daily, monthly or yearly")}
-            }}
-        }else{
-          if(unit.time=="hours since 1-1-1 00:00:0.0"|unit.time=="hours since 1-01-01 00:00"){
-            if (diff.time==24){
+            }
+ }
+    return(temp.date)
+}
+
+unit.2<-function(diff.time,temp.time,temp.nc,timevar,unit.time)### ="hours since 1-1-1 00:00:0.0"|unit.time=="hours since 1-01-01 00:00
+{
+  if (diff.time==24){
               temp.date<-(chron(temp.time/24,origin=c(month=1,day=1,year=01)))
               d.year<-as.numeric(as.character(years(temp.date)))
               d.day<-as.numeric(temp.date-chron(paste("1/1/",years(temp.date),sep="")))
               temp.date<-d.year+d.day/365
 
-            }else{
+            } else{
               temp.date <- as.vector(as.yearmon(chron(temp.time/24,origin=c(month=1,day=1,year=01))))
             }
-          }else{
-            if(length(grep(glob2rx("days since ????-??-?? ??:??"),unit.time))){
-              start.year<-as.numeric(sub("-..-.....:..","",sub("days since ","",unit.time)))
-              start.mon<-as.numeric(sub("-.....:..","",sub("days since ....-","",unit.time)))
-              start.day<-as.numeric(sub("...:..","",sub("days since ....-..-","",unit.time)))
-              abs.start.day<-julday(start.mon,start.day,2001)-julday(1,1,2001)
+  return(temp.date)
+}
 
-              d.day<-(temp.time+abs.start.day)/365
-              temp.date<-start.year+d.day
-            }else{
-              if(length(grep(glob2rx("days since ???-??-?? ??:??:??"),unit.time))){
-                start.year<-as.numeric(sub("-..-.....:..:..","",sub("days since ","",unit.time)))
-                start.mon<-as.numeric(sub("-.....:..:..","",sub("days since ...-","",unit.time)))
-                start.day<-as.numeric(sub("...:..:..","",sub("days since ...-..-","",unit.time)))
-              #  abs.start.day<-julday(start.mon,start.day,2001)-julday(1,1,2001)
-                temp.date <- as.vector(as.yearmon(chron(temp.time,origin=c(month=start.mon,day=start.day,year=start.year))))
-                # cut after comma
-                temp.date<-floor(temp.date)
-              #  d.day<-(temp.time+abs.start.day)/365
-              #  temp.date<-start.year+d.day
-              }
-              else{stop(paste("time format",unit.time,"not supported by read_data"))}
+unit.3<-function(diff.time,temp.time,temp.nc,timevar,unit.time) # days since ????-??-?? ??:??
+{
+    start.year<-as.numeric(sub("-..-.....:..","",sub("days since ","",unit.time)))
+    start.mon<-as.numeric(sub("-.....:..","",sub("days since ....-","",unit.time)))
+    start.day<-as.numeric(sub("...:..","",sub("days since ....-..-","",unit.time)))
+    abs.start.day<-julday(start.mon,start.day,2001)-julday(1,1,2001)
+
+    d.day<-(temp.time+abs.start.day)/365
+    temp.date<-start.year+d.day
+    return(temp.date)
+}
+
+unit.4<-function(diff.time,temp.time,temp.nc,timevar,unit.time) #    #days since ????-??-?? ??:??:??
+{
+    start.year<-as.numeric(sub("-..-.....:..:..","",sub("days since ","",unit.time)))
+    start.mon<-as.numeric(sub("-.....:..:..","",sub("days since ....-","",unit.time)))
+    start.day<-as.numeric(sub("...:..:..","",sub("days since ....-..-","",unit.time)))
+    abs.start.day<-julday(start.mon,start.day,2001)-julday(1,1,2001)
+    d.day<-(temp.time+abs.start.day)/365
+    temp.date<-start.year+d.day
+    return(temp.date)
+}
+
+
+unit.5<-function(diff.time,temp.time,temp.nc,timevar,unit.time) #  days since ???-??-?? ??:??:??
+{
+
+    start.year<-as.numeric(sub("-..-.....:..:..","",sub("days since ","",unit.time)))
+    start.mon<-as.numeric(sub("-.....:..:..","",sub("days since ...-","",unit.time)))
+    start.day<-as.numeric(sub("...:..:..","",sub("days since ...-..-","",unit.time)))
+
+    temp.date <- as.vector(as.yearmon(chron(temp.time,origin=c(month=start.mon,day=start.day,year=start.year))))
+    # cut after comma
+    temp.date<-floor(temp.date)
+
+    return(temp.date)
+}
+
+
+
+
+
+
+getTimeAxes<-function(temp.time,temp.nc)
+#Input:
+#temp.time: time vector in the orginal format
+#temp.nc  : link to the netcdf file
+
+#Output: Date vector in year.year
+{
+
+
+    timevar<-as.numeric(find.var(temp.nc,"time")[2:3])
+    unit.time<-temp.nc$var[[timevar[1]]]$dim[[timevar[2]]]$units
+#UNCLEAR; can we just use temp.time here?
+    tval<-temp.nc$var[[timevar[1]]]$dim[[timevar[2]]]$vals
+    if (length(tval)>1) diff.time<-max(diff(tval)) else diff.time=0
+
+
+     if(unit.time=="day as %Y%m%d.%f") temp.date<-unit.1(diff.time,temp.time,temp.nc,timevar,unit.time) else
+     if(unit.time=="hours since 1-1-1 00:00:0.0"|unit.time=="hours since 1-01-01 00:00")  temp.date<-unit.2(diff.time,temp.time,temp.nc,timevar,unit.time) else
+     if(length(grep(glob2rx("days since ????-??-?? ??:??"),unit.time)))  temp.date<-unit.3(diff.time,temp.time,temp.nc,timevar,unit.time) else
+     if (length(grep(glob2rx("days since ????-??-?? ??:??:??"),unit.time))) temp.date<-unit.4(diff.time,temp.time,temp.nc,timevar,unit.time) else
+     if(length(grep(glob2rx("days since ???-??-?? ??:??:??"),unit.time))) temp.date<-unit.5(diff.time,temp.time,temp.nc,timevar,unit.time) else
+               stop(paste("time format",unit.time,"not supported by read_data"))
+
+     return(temp.date)
+}
+
+
+
+read_data<-function(FILENAME="",varname=NULL,name="",lonname=NULL,latname=NULL,timename=NULL,missVal=c(-1e+20,1e+20),bClim=FALSE,level=NULL,roundMonth=FALSE)
+#Universal reading function for netcdf files; originally from Moritz Krieger
+#Input:
+#    FILENAME
+#    varname
+#optionaly: lonname,latname and timename, if these are not the standard names
+#missVal: Values outside this range are set to NA
+#bClim (TRUE): than it expects 12 values and gives them the months 1...12
+#roundMonth (TRUE): rounds the dates to the next month; this is sometimes needed to create
+#equidistant timesteps (as the real months have different lengths)
+
+#level: level index; if a multilevel variable is choosen and level is given, this level is returned
+
+#Output
+#pField object containing the variable + lat,lon,time and the name
+#26.10.11: The reading process was splitted into functions to keep the code more readable; still untested
+{
+
+    temp.nc = open.ncdf(FILENAME)
+
+    # read varname from temp.nc
+    if(is.null(varname)){
+        if(temp.nc$nvars>1){
+            varnames<-c()
+            for (i in 1:length(temp.nc$var)){
+                    varnames<-c(varnames,temp.nc$var[[i]]$name)
             }
-          }
+
+        print("following varnames are given:")
+        for (i in 1:length(varnames)){print(varnames[i])}
+   stop("you have to specify varname")
         }
-    } else temp.date=1:12
+        varname<-temp.nc$var[[1]]$name
+    }
+
+       # read name for lon and lat variabels from temp.nc
+    if(is.null(lonname)){
+        lonnames<-c("lon","longitude","lons") # list of known lonnames
+        lonname<-find.var(temp.nc,lonnames)[1]
+    }
+    if(is.null(latname)){
+        latnames<-c("lat","latitude","lats")     # list of known latnames
+        latname<-find.var(temp.nc,latnames)[1]
+    }
+
+       if(is.null(timename)){
+        timenames<-c("time","t")     # list of known timenames
+        timename<-find.var(temp.nc,timenames)[1]
+    }
+
+
+    #Read out the data
+    temp.time <- get.var.ncdf(temp.nc,timename)
+    temp.data <-get.var.ncdf(temp.nc,varname)
+    temp.lat <-get.var.ncdf(temp.nc,latname)
+    temp.lon <-get.var.ncdf(temp.nc,lonname)
+       #convert from missVal given values to NA
+    temp.data[temp.data<=missVal[1]]<-NA
+    temp.data[temp.data>=missVal[2]]<-NA
+
+    if (!is.null(level)) #User provided a level
+    {
+        #if only one timestep; than level = third dimension,
+        if (length(temp.time)<2)  temp.data<-temp.data[,,level] else temp.data<-temp.data[,,level,]
+        warning("Be carful; the level reading might not yet always work")
+    }
+
+
+    if (bClim & (length(temp.time))!=12) stop("bClim was choosen but != 12 timesteps in the dataset")
+
+    if (!bClim) temp.date<-getTimeAxes(temp.time,temp.nc) else temp.date=1:12
+
+
+    if (length(dim(temp.data))==3)
+    {
 
     #Sort the latitudes
     tmp<-sort(temp.lat,index.return=TRUE)
     temp.lat<-temp.lat[tmp$ix]
     temp.data<-temp.data[,tmp$ix,]
+
        #sort the longitudes
     temp.lon[temp.lon<0]<-temp.lon[temp.lon<0]+360
     tmp<-sort(temp.lon,index.return=TRUE)
     temp.lon<-temp.lon[tmp$ix]
     temp.data<-temp.data[tmp$ix,,]
-  }
-    else
+  }  else #temp.time has only one element
       {
+
+    if (length(dim(temp.data))!=2) stop("three dimensions were found but only one timestep; if the file includes levels, please provide the level to read")
           #Sort the latitudes
+
     tmp<-sort(temp.lat,index.return=TRUE)
     temp.lat<-temp.lat[tmp$ix]
     temp.data<-temp.data[,tmp$ix]
+
        #sort the longitudes
     temp.lon[temp.lon<0]<-temp.lon[temp.lon<0]+360
     tmp<-sort(temp.lon,index.return=TRUE)
@@ -132,8 +217,16 @@ read_data<-function(FILENAME="",varname=NULL,name="",lonname=NULL,latname=NULL,m
     temp.data<-temp.data[tmp$ix,]
       }
 
+
+if (roundMonth)
+{
+    warning("each timestep is rounded to the next full month")
+    temp.date<-round(temp.date*12)/12
+}
+
+
 #Check if multiple timesteps are contained; For single fields (e.g. Trends) return the single field with time 1
-   if (length(temp.time)>1) return(pField(temp.data,temp.date,lat=temp.lat,lon=temp.lon,name=name,history=FILENAME)) else
+   if (length(temp.date)>1) return(pField(temp.data,temp.date,lat=temp.lat,lon=temp.lon,name=name,history=FILENAME)) else
     return(pField(temp.data,1,lat=temp.lat,lon=temp.lon,name=name,history=FILENAME))
  }
 

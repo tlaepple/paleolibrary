@@ -1,0 +1,48 @@
+#Small shortcuts
+last<-function (x)
+{
+    return(x[length(x)])
+}
+
+first<-function (x)
+{
+    return(x[1])
+}
+
+#Search the element in xvector which is closest to x
+#if N = nearest; L = less, the next <= smaller value; M=more, the >= next higher value
+closest.element<-function(xvector,x,type="N")
+{
+   if (type=="N")  return(which.min(abs(x-xvector)))
+
+   if (min(diff(xvector))<0) stop("Vector must be monotonically increasing for the the methods M and L")
+   if (type=="M") return(first(which(x<=xvector)))
+   if (type=="L") return(last(which(x>=xvector)))
+
+}
+
+#Averages y into bins according to the positon of a in the breaks
+#Either give N=number of breaks, or N+1 breaks
+#Breaks are defined as x>breaks[i], and x<=breaks[i+1]
+#see also stats.bin in library(fields) which returns a more comprehensive statistics
+#if fill=T, fill empty bins using linear interpolation from the neighbours to the center of the bin
+binAvg<-function(x,y,N=NULL,breaks=pretty(x,N),bFill=FALSE)
+{
+    NBIN <- length(breaks) - 1
+    centers <- (breaks[1:NBIN] + breaks[2:(NBIN + 1)])/2
+
+    avg<-rep(NA,length(breaks)-1)
+    for (i in 1:(length(breaks)-1)) {
+        avg[i]<-mean(y[which((x>breaks[i])&(x<=breaks[i+1]))],na.rm=TRUE)
+        }
+
+
+  if ((sum(is.na(avg))>0)&(bFill))
+  {
+      yInt<-approx(x,y,centers)$y
+      missing<-is.na(avg)
+      avg[missing]<-yInt[missing]
+  }
+   return(list(breaks=breaks,centers=centers,avg=avg))
+}
+

@@ -1,7 +1,7 @@
 #ownfunctions.R
 #here you can put your own and/or updated functions
 
-addpoints<-function(lat,lon,value,pch=19,lwd=7,data=NULL,zlim=range(data,finite=TRUE),levels=pretty(zlim,nlevels),nlevels=20,palette=colorRampPalette(c("violetred4","blue","steelblue", "lightgreen","white", "yellow","orange","red","brown")))
+addpoints<-function(lat,lon,value,pch=19,lwd=7,data=NULL,zlim=range(data,finite=TRUE),levels=pretty(zlim,nlevels),nlevels=20,palette=colorRampPalette(c("violetred4","blue","steelblue", "lightgreen","white", "yellow","orange","red","brown")),frame=NULL)
 {
 	#if (is.null(levels)) stop("Levels of the plot are required")
 
@@ -9,6 +9,7 @@ addpoints<-function(lat,lon,value,pch=19,lwd=7,data=NULL,zlim=range(data,finite=
 	highres.levels<-(seq(levels)-1)*10+1
 	allcolors<-palette(highres.levels[length(highres.levels)]) #Get all the colors
 	colors<-allcolors[approx(levels,highres.levels,value)$y] #Get the colors of the points by linear interpolation
+          if (!is.null(frame))  	points(lon,lat,col=frame,pch=pch,lwd=lwd+1)
 	points(lon,lat,col=colors,pch=pch,lwd=lwd)
 }
 
@@ -107,7 +108,7 @@ composite <-function(ts,field,sign=FALSE,sp=sd(ts),sm=(-1*sp),anomaly=T)
 
 
 
-plotmap.square <- function(plotdata,main=NULL,zlim=range(plotdata,finite=TRUE),levels=pretty(zlim,nlevels),nlevels=20,palette=rbow,FUN=NULL,stype=2,sSub="", ...)
+plotmap.square <- function(plotdata,main=NULL,zlim=range(plotdata,finite=TRUE),levels=pretty(zlim,nlevels),nlevels=20,palette=rbow,FUN=NULL,stype=2,sSub="",legend=TRUE,landcol="black", ...)
 {
 if (stype == 2) {
 
@@ -124,9 +125,9 @@ if (stype == 2) {
         tmp<-plot.preparation(plotdata)
 	plotsquare(tmp$lon,tmp$lat,tmp$data,zlim=zlim,nlevels=nlevels,levels=levels,color=palette,plot.title={
         title(main=main,sub=sSub);
+        addland(col=landcol);
         if (!is.null(FUN)) FUN(tmp$lon,tmp$lat,tmp$data)
-        addland(col="black");
-        grid()}, ...)
+        grid()},legend=legend, ...)
       }
 
 plotsquare<-function (x = seq(0, 1, len = nrow(z)), y = seq(0, 1, len = ncol(z)),
@@ -134,7 +135,7 @@ plotsquare<-function (x = seq(0, 1, len = nrow(z)), y = seq(0, 1, len = ncol(z))
     zlim = range(z, finite = TRUE), levels = pretty(zlim, nlevels),
     nlevels = 20, color.palette = cm.colors, col = color.palette(length(levels) -
         1), plot.title, plot.axes, key.title, key.axes, asp = NA,
-    xaxs = "i", yaxs = "i", las = 1, axes = TRUE, frame.plot = axes,
+    xaxs = "i", yaxs = "i", las = 1, axes = TRUE, frame.plot = axes,legend=TRUE,
     ...)
 {
     if (missing(z)) {
@@ -157,7 +158,8 @@ plotsquare<-function (x = seq(0, 1, len = nrow(z)), y = seq(0, 1, len = ncol(z))
     }
     if (any(diff(x) <= 0) || any(diff(y) <= 0))
         stop("increasing 'x' and 'y' values expected")
-    mar.orig <- (par.orig <- par(c("mar", "las", "mfrow")))$mar
+ if (legend)
+     {mar.orig <- (par.orig <- par(c("mar", "las", "mfrow")))$mar
     on.exit(par(par.orig))
     w <- (3 + mar.orig[2]) * par("csi") * 2.54
     layout(matrix(c(2, 1), nc = 2), widths = c(1, lcm(w)))
@@ -170,6 +172,7 @@ plotsquare<-function (x = seq(0, 1, len = nrow(z)), y = seq(0, 1, len = ncol(z))
     plot.window(xlim = c(0, 1), ylim = range(levels), xaxs = "i",
         yaxs = "i")
     rect(0, levels[-length(levels)], 1, levels[-1], col = col)
+
     if (missing(key.axes)) {
         if (axes)
             axis(4)
@@ -181,6 +184,7 @@ plotsquare<-function (x = seq(0, 1, len = nrow(z)), y = seq(0, 1, len = ncol(z))
     mar <- mar.orig
     mar[4] <- 1
     par(mar = mar)
+}
     #plot.new()
     #plot.window(xlim, ylim, "", xaxs = xaxs, yaxs = yaxs, asp = asp)
     image(x,y,z,col=col,zlim=zlim,xlab="",ylab="")
@@ -421,3 +425,4 @@ if (one_sided) return(result) else return(c(-1*result,result))
 
 #discrete version of runif
 drunif<-function(n,min=0,max=1) return(floor(runif(n=n,min=min,max=max+1)))
+

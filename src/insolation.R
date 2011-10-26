@@ -1,7 +1,83 @@
-### Insolation, converted and adapted from Huybers Code, based on Berger 1991
 
-daily_insolation_param<-function(lat,day,ecc,obliquity,long_perh,day_type=1)
+Tyear<-365.2422 #length of tropical year in days
+
+#The following calculations were based on the book
+#Grossman; The sheer joy of celestial mechanics
+#Orbits under the inverse square law
+
+calcE<-function(M,e,tol=1e-8)
+#Calculate the Eccentricity anomaly E from the mean anomaly M, iterativly
+#inversion of Keplers formula: E-e*sin(E)=M  (188)
 {
+  E<-vector()
+  for (i in 1:length(M))
+  {
+    Etemp<-M[i]
+    ratio<-1
+    while (abs(ratio)>tol)
+    {
+        f.E <- Etemp - e*sin(Etemp) -M[i]
+        f.Eprime <- 1-e*cos(Etemp)
+        ratio <- f.E/f.Eprime
+        if (abs(ratio) > tol) Etemp<-Etemp-ratio else E[i]<-Etemp
+
+    }
+}
+    return(E)
+
+}
+
+
+
+calcf<-function(E,e)
+{
+
+#Calculate the true anomaly f (theta) from the eccentricity anomaly
+ #true anomaly = angle between the point and perihelion
+#book: (181)
+    temp<-atan(sqrt((1+e)/(1-e))*tan(0.5*E))*2
+temp[temp<0]<-temp[temp<0]+2*pi
+    return(temp)
+}
+
+
+t.from.f<-function(ecc,f)
+#input : f = true angle from perihelion
+#output: t = days from perihelion, calculated using the mean angle M
+{
+    #Calculate the eccentricity anomaly E
+     E<-atan(tan(0.5*f)/sqrt((1+ecc)/(1-ecc)))*2 #(181)
+    #Keplers equation to get the mean anomaly (188)
+     M <-  E - ecc*sin(E)
+
+    #Convert into days
+    n = 2*pi/Tyear
+    t <- M/n #182
+    if (t<0) t<-t+Tyear
+    return(t)
+}
+
+
+f.from.t<-function(ecc,t)
+{
+#input: t = days from perihelion
+#output : f = true angle from perihelion (via the mean angle M)
+      n = 2*pi/Tyear
+    M<-t*n
+    E<-calcE(M,ecc)
+    f<-calcf(E,ecc)
+    return(f)
+}
+
+
+
+
+
+
+daily_insolation_param<-function(lat,day,ecc,obliquity,long_perh,day_type=1,alpha=0,T.alpha=80)
+{
+### Insolation, converted and adapted from the Eisenmann and Huybers,2006
+#Matlab Code, based on Berger 1991
 # Usage:
 #   Fsw = daily_insolation(lat,day,eccentricity,obliquity,long_perh)
 #
@@ -25,9 +101,15 @@ daily_insolation_param<-function(lat,day,ecc,obliquity,long_perh,day_type=1)
 #       equinox (21 March). Note that calendar days and solar longitude are
 #       not linearly related because, by Kepler's Second Law, Earth's
 #       angular velocity varies according to its distance from the sun.
+#    day_type=3; Custom calendar
+#    that alpha (angle since equinox) is reached at day T.alpha
+# this uses an iterative solution of Keplers equation and is therefore
+# much slower than the day_type=1 which uses a trigeometric approximation
+#of Kepler's equation
+
 # Output:
 #   Fsw = Daily average solar radiation in W/m^2.
-#   Can also output orbital parameters.
+#   omega = Angle in degree since the spring equinox
 #
 # This script contains orbital parameter data for the past 50000 years
 #   from Berger and Loutre (1991).
@@ -47,6 +129,7 @@ daily_insolation_param<-function(lat,day,ecc,obliquity,long_perh,day_type=1)
 #   Berger A. (1978). Long-term variations of daily insolation and
 #     Quaternary climatic changes. Journal of Atmospheric Science, 35(12),
 #     2362-2367.
+#   Grossmann (1937). The sheer joy of celestial mechanics
 #
 # Authors:
 #   Ian Eisenman and Peter Huybers, Harvard University, August 2006
@@ -83,13 +166,24 @@ if (day_type ==1) # calendar days
 
     lambda<-lambda_m+(2*ecc-1/4*ecc^3)*sin(lambda_m-omega)+(5/4)*ecc^2*sin(2*(lambda_m-omega))+(13/12)*ecc^3*sin(3*(lambda_m-omega))
 
-#Wie kann ich das aufhängen !? Eventuell einfach über sommer solstice verschieben ? d.h. zu 270°
-
-
 
 } else if (day_type==2) #solar longitude (1-360)
     {lambda=day*2*pi/360 # lambda=0 for spring equinox
-} else stop('Error: invalid day_type')
+} else if (day_type==3)
+{
+    #t.from.f(eccc,alpha-omega) = days since Perihelion in which
+    #the angle alpha, measured from the equinox is reached
+
+    #tau
+    tau = -1*t.from.f(ecc,alpha-omega) + T.alpha
+    #angle since equinox given the days with the calendar fixed using
+    #the condition that alpha (angle since equinox) is reached at day T.alpha
+    lambda<-f.from.t(ecc,day-tau)+omega
+
+
+
+}else stop('Error: invalid day_type')
+
 
 So<-1365 # solar constant (W/m^2)
 delta<-asin(sin(epsilon)*sin(lambda)) # declination of the sun
@@ -116,35 +210,6 @@ annual_insolation<-function(kyear,lat)
 }
 
 
-daily_insolation<-function(kyear,lat,day,day_type=1,fast=T)
-{
-# Usage:
-#   Fsw = daily_insolation(kyear,lat,day)
-#
-# Optional inputs/outputs:
-#   [Fsw, ecc, obliquity, long_perh] = daily_insolation(kyear,lat,day,day_type)
-#
-# Description:
-#   Computes daily average insolation as a function of day and latitude at
-#   any point during the past 5 million years.
-#
-# Inputs:
-#   kyear:    Thousands of years before present (0 to 5000).
-#   lat:      Latitude in degrees (-90 to 90).
-#   day:      Indicator of time of year; calendar day by default.
-#   day_type: Convention for specifying time of year (+/- 1,2) [optional].
-#     day_type=1 (default): day input is calendar day (1-365.24), where day 1
-#       is January first.  The calendar is referenced to the vernal equinox
-#       which always occurs at day 80.
-#     day_type=2: day input is solar longitude (0-360 degrees). Solar
-#       longitude is the angle of the Earth's orbit measured from spring
-#       equinox (21 March). Note that calendar days and solar longitude are
-#       not linearly related because, by Kepler's Second Law, Earth's
-#       angular velocity varies according to its distance from the sun.
-# Output:
-#   Fsw = Daily average solar radiation in W/m^2.
-#   Can also output orbital parameters.
-#
 # This script contains orbital parameter data for the past 50000 years
 #   from Berger and Loutre (1991).
 #
@@ -153,7 +218,10 @@ daily_insolation<-function(kyear,lat,day,day_type=1,fast=T)
 #   past 5 Myr are taken from Berger and Loutre 1991 (data from
 #   ncdc.noaa.gov). If using calendar days, solar longitude is found using an
 #   approximate solution to the differential equation representing conservation
-#   of angular momentum (Kepler's Second Law).  Given the orbital parameters
+#   of angular momentum (Kepler's Second Law) (day_type=1), or an iterative
+#   solution of Keplers Equation (day_type=3)
+#
+#    Given the orbital parameters
 #   and solar longitude, daily average insolation is calculated exactly
 #   following Berger 1978.
 #
@@ -163,17 +231,48 @@ daily_insolation<-function(kyear,lat,day,day_type=1,fast=T)
 #   Berger A. (1978). Long-term variations of daily insolation and
 #     Quaternary climatic changes. Journal of Atmospheric Science, 35(12),
 #     2362-2367.
+
+daily_insolation<-function(kyear,lat,day,day_type=1,fast=T,T.alpha=80,alpha=0)
+{
+### Computes the daily average insolation, converted and adapted from the Eisenmann and Huybers,2006
+#Matlab Code
+# Orbital parameters from Berger and Loutre 1991
+# calculation of daily average insolation following Berger A. (1978).
+# Iterative solution for the Kepler equation, following Grossman; "The sheer joy of celestial mechanics,
+# Orbits under the inverse square law"
+# Inputs:
+#   kyear:    Thousands of years before present (0 to 5000).
+#   lat:      Latitude in degrees (-90 to 90).
+#   day:      Indicator of time of year; calendar day by default.
+#   day_type: Convention for specifying time of year (1,2,3) [optional].
+#     day_type=1 (default): day input is calendar day (1-365.24), where day 1
+#       is January first.  The calendar is referenced to the vernal equinox
+#       which always occurs at day 80.
+#     day_type=2: day input is solar longitude (0-360 degrees). Solar
+#       longitude is the angle of the Earth's orbit measured from spring
+#       equinox (21 March). Note that calendar days and solar longitude are
+#       not linearly related because, by Kepler's Second Law, Earth's
+#       angular velocity varies according to its distance from the sun.
+#  day_type=3; Custom calendar
+#    day input is calendar day (1-365.24), where day 1
+#    is January first.  The calendar is referenced to the solar longitude alpha
+#    (0..2pi, angle of the earth orbit from spring equinox)
+#       which always occurs at day T.alpha.
+# this uses an iterative solution of Keplers equation and is therefore
+# much slower than the day_type=1 which uses a trigeometric approximation
+#of Kepler's equation
+
+# Output:
+#   Fsw = Daily average solar radiation in W/m^2.
+#   omega = Angle in degree since the spring equinox
 #
-# Authors:
+# Authors of original MATLAB version :
 #   Ian Eisenman and Peter Huybers, Harvard University, August 2006
 #   eisenman@fas.harvard.edu
 #   This file is available online at
 #   http://deas.harvard.edu/~eisenman/downloads
-#   Translated into R by Thomas Laepple
-# Suggested citation:
-#   P. Huybers and I. Eisenman, 2006. Integrated summer insolation
-#   calculations. NOAA/NCDC Paleoclimatology Program Data
-#   Contribution #2006-079.
+#
+#Translation into R and extension to arbitray calendars; Thomas Laepple, 2008
 #
 
 # === Get orbital parameters ===
@@ -182,7 +281,6 @@ daily_insolation<-function(kyear,lat,day,day_type=1,fast=T)
     ecc<-temp$ecc
     epsilon<-temp$epsilon
     omega<-temp$omega
-
 
 # For output of orbital parameters
 obliquity<-epsilon*180/pi
@@ -202,7 +300,21 @@ if (day_type ==1) # calendar days
     lambda<-lambda_m+(2*ecc-1/4*ecc^3)*sin(lambda_m-omega)+(5/4)*ecc^2*sin(2*(lambda_m-omega))+(13/12)*ecc^3*sin(3*(lambda_m-omega))
 } else if (day_type==2) #solar longitude (1-360)
     {lambda=day*2*pi/360 # lambda=0 for spring equinox
-} else stop('Error: invalid day_type')
+} else if (day_type==3)
+{
+    #t.from.f(eccc,alpha-omega) = days since perihelion in which
+    #the angle alpha, measured from the equinox is reached
+
+    #tau
+    tau = -1*t.from.f(ecc,alpha-omega) + T.alpha
+
+    #angle since equinox given the days with the calendar fixed using
+    #the condition that alpha (angle since equinox) is reached at day T.alpha
+    lambda<-f.from.t(ecc,day-tau)+omega
+
+
+
+}else stop('Error: invalid day_type')
 
 So<-1365 # solar constant (W/m^2)
 delta<-asin(sin(epsilon)*sin(lambda)) # declination of the sun
@@ -218,6 +330,8 @@ Fsw=So/pi*(1+ecc*cos(lambda-omega))^2 /(1-ecc^2)^2 * ( Ho*sin(lat)*sin(delta) + 
 
 return(list(Fsw=Fsw,ecc=ecc,obliquity=obliquity,long_perh=long_perh,lambda=lambda/2/pi*360 ))
 }
+
+
 
 
 orbital_parameters_fast<-function(kyear)
@@ -327,7 +441,7 @@ ins.march21<-function(kyear,LAT)
 ins.dec21<-function(kyear,LAT)
 {
 	r<-daily_insolation(kyear,LAT,1:365)  #Eigentlich passt 356 besser
-	shift<-355-which.min(abs(r$lambda-270))	     #dann entprechend hinschieben
+	shift<-355-which.min(abs(r$lambda-270))	 #270    #dann entprechend hinschieben
 	r<-tlag(r$Fsw,shift)
 	return(r)
 }

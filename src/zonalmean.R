@@ -1,5 +1,5 @@
 
-latmean<-function(data)
+latmean<-function(data,na.rm=FALSE)
 {
 	temp<-attributes(data)
 	stime<-time(data)
@@ -8,7 +8,7 @@ latmean<-function(data)
   	nLon<-length(temp$lon)
 	data<-as.matrix(data)
 	dim(data)<-c(nTime,nLon,nLat)
-	zmeans<-apply(data,c(1,3),mean)
+	zmeans<-apply(data,c(1,3),mean,na.rm=na.rm)
 	return(zmeans)
 }
 
@@ -28,10 +28,10 @@ hovmoeller<-function(data,refperiod=c(start(data)[1],end(data)[1]),xlab="time",y
 
 
 
-zonalmean<-function(data)
+zonalmean<-function(data,...)
 {
 	result<-list()
-	result$zmean=latmean(data)
+	result$zmean=latmean(data,...)
 	result$lat = getlat(data)
                 result$time=time(data)
 	return(result)

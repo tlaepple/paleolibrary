@@ -9,6 +9,9 @@
          if (paramet == "Latitude") {
        symb <- substitute(paste(paramet," [", degree,"N]" , sep=''))
      }
+        if (paramet == "density anomaly") {
+       symb <- substitute(paste("density anomaly [kg/m^3]", sep=''))
+     }
       return(symb)
   }  # end of function paleo.symbols
 ######################################################################3##

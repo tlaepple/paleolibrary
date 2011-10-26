@@ -6,6 +6,9 @@
       if (paramet == "Temperature") {
        symb <- substitute(paste(paramet," [", degree,"C]" , sep=''))
      }
+         if (paramet == "Latitude") {
+       symb <- substitute(paste(paramet," [", degree,"N]" , sep=''))
+     }
       return(symb)
   }  # end of function paleo.symbols
 ######################################################################3##
