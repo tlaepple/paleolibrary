@@ -108,7 +108,7 @@ composite <-function(ts,field,sign=FALSE,sp=sd(ts),sm=(-1*sp),anomaly=T)
 
 
 
-plotmap.square <- function(plotdata,main=NULL,zlim=range(plotdata,finite=TRUE),levels=pretty(zlim,nlevels),nlevels=20,palette=rbow,FUN=NULL,stype=2,sSub="",legend=TRUE,landcol="black", ...)
+plotmap.square <- function(plotdata,main=NULL,zlim=range(plotdata,finite=TRUE),levels=pretty(zlim,nlevels),nlevels=20,palette=rbow,FUN=NULL,stype=2,sSub="",legend=TRUE,landcol="black",shift=FALSE, ...)
 {
 if (stype == 2) {
 
@@ -117,12 +117,15 @@ if (stype == 2) {
 
 
 }
-
-
 	temp<-attributes(plotdata)
 
 	if (is.null(main)) main<-temp$name
-        tmp<-plot.preparation(plotdata)
+        tmp<-plot.preparation(plotdata,shift=shift)
+
+	#Avoid longitudes > 360
+	if (max(tmp$lon)>360) tmp$lon<-tmp$lon-360
+
+
 	plotsquare(tmp$lon,tmp$lat,tmp$data,zlim=zlim,nlevels=nlevels,levels=levels,color=palette,plot.title={
         title(main=main,sub=sSub);
         addland(col=landcol);
