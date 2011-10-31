@@ -31,14 +31,10 @@ source(paste(path,'confspec.R',sep=""))
 
 source(paste(path,'paleo.symbols.R',sep=""))
 
-
-
 source(paste(path,'ownfunctions.R',sep=""))                #put your own functions /
 							                  #changed functions here
 
-
 source(paste(path,'selspace.interp.R',sep=""))
-
 
 source(paste(path,'robust.R',sep=""))
 
@@ -46,4 +42,6 @@ source(paste(path,'confspec.R',sep=""))  #Includes spectral estimation + signifi
 
 source(paste(path,'shortcuts.R',sep=""))  #Includes shortcuts as first and last to access the first and last element of a vector
 
+sourceDir(paste(path,'single_functions',sep=""))
+sourceDir(paste(path,'single_functions/read_functions',sep=""))
 
