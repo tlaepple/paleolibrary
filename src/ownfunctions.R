@@ -108,7 +108,7 @@ composite <-function(ts,field,sign=FALSE,sp=sd(ts),sm=(-1*sp),anomaly=T)
 
 
 
-plotmap.square <- function(plotdata,main=NULL,zlim=range(plotdata,finite=TRUE),levels=pretty(zlim,nlevels),nlevels=20,palette=rbow,FUN=NULL,stype=2,sSub="",legend=TRUE,landcol="black",shift=FALSE, ...)
+plotmap.square <- function(plotdata,main=NULL,zlim=range(plotdata,finite=TRUE),levels=pretty(zlim,nlevels),nlevels=21,palette=rbow,FUN=NULL,stype=2,sSub="",legend=TRUE,landcol="black",shift=FALSE, ...)
 {
 if (stype == 2) {
 
@@ -136,7 +136,7 @@ if (stype == 2) {
 plotsquare<-function (x = seq(0, 1, len = nrow(z)), y = seq(0, 1, len = ncol(z)),
     z, xlim = range(x, finite = TRUE), ylim = range(y, finite = TRUE),
     zlim = range(z, finite = TRUE), levels = pretty(zlim, nlevels),
-    nlevels = 20, color.palette = cm.colors, col = color.palette(length(levels) -
+    nlevels = 21, color.palette = cm.colors, col = color.palette(length(levels) -
         1), plot.title, plot.axes, key.title, key.axes, asp = NA,
     xaxs = "i", yaxs = "i", las = 1, axes = TRUE, frame.plot = axes,legend=TRUE,
     ...)
@@ -365,7 +365,7 @@ ploteof<-function(pcomp,ts,i=1,minLat=NULL,maxLat=NULL,minLon=NULL,maxLon=NULL,p
 
 
 
-# Eingabe: Die zwei Datenreihen x1 und x2, Optional xlim = x-Grenzen, Farben etc... mit x1.at und x2.at kann man die Positionen der labels verändern,
+# Eingabe: Die zwei Datenreihen x1 und x2, Optional xlim = x-Grenzen, Farben etc... mit x1.at und x2.at kann man die Positionen der labels ver?ndern,
 # Zeroline=TRUE zeichnet Nullline, xlab, ylab den Text der Achsenbeschriftung. Die zweite y-Achse kann im Moment nicht beschriftet werden
 
 #derived from Doppelplot
@@ -401,8 +401,8 @@ box()
 
 
 #Eingabe: N = Anzahl der Zeitpunkte
-#filt = Filter den du zum glätten verwendest
-#pval = gewünschter p-Wert z.B. 0.05
+#filt = Filter den du zum gl?tten verwendest
+#pval = gew?nschter p-Wert z.B. 0.05
 #one_sided: = TRUE, es wird nur auf Korrelation>  0 getestet, = FALSE auf
 #<  0 oder>  0
 
